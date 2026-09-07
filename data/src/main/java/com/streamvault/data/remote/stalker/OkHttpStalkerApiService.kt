@@ -1035,7 +1035,7 @@ class OkHttpStalkerApiService @Inject constructor(
                 if (page < (advertisedPages ?: 1)) malformed = true
                 break
             }
-            if (advertisedPages != null && page >= advertisedPages!!) break
+            if (advertisedPages != null && page >= advertisedPages) break
             if (page == MAX_PAGE_COUNT) {
                 pageLimitReached = true
                 break
@@ -3515,13 +3515,15 @@ class OkHttpStalkerApiService @Inject constructor(
 
     private fun JsonElement.extractListElements(): List<JsonElement> {
         val jsValue = rootObjectOrNull()?.get("js") ?: this
+        val data = (jsValue as? JsonObject)?.get("data")
+        val items = (jsValue as? JsonObject)?.get("items")
         return when {
             jsValue is JsonArray -> jsValue.toList()
-            jsValue is JsonObject && jsValue["data"] is JsonArray -> jsValue["data"]!!.jsonArray.toList()
-            jsValue is JsonObject && jsValue["items"] is JsonArray -> jsValue["items"]!!.jsonArray.toList()
+            data is JsonArray -> data.toList()
+            items is JsonArray -> items.toList()
             // Object-keyed catalogs: {"js":{"data":{"100":{...}}}} — use map values
-            jsValue is JsonObject && jsValue["data"] is JsonObject -> jsValue["data"]!!.jsonObject.values.toList()
-            jsValue is JsonObject && jsValue["items"] is JsonObject -> jsValue["items"]!!.jsonObject.values.toList()
+            data is JsonObject -> data.values.toList()
+            items is JsonObject -> items.values.toList()
             else -> emptyList()
         }
     }

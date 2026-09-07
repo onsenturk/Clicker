@@ -6,6 +6,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.work.Configuration
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
+import androidx.work.testing.SynchronousExecutor
 import androidx.work.testing.WorkManagerTestInitHelper
 import com.google.common.truth.Truth.assertThat
 import com.streamvault.data.sync.BackgroundEpgSyncWorker
@@ -13,10 +14,10 @@ import com.streamvault.data.sync.ProviderSyncWorker
 import com.streamvault.data.sync.StalkerIndexWorker
 import com.streamvault.data.sync.XtreamIndexWorker
 import com.streamvault.data.sync.providerWorkUniqueName
+import org.junit.After
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
-import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
 /** Exercises the actual worker enqueue APIs against WorkManager's unique-work database. */
@@ -31,11 +32,18 @@ class ProviderWorkManagerSerializationTest {
         WorkManagerTestInitHelper.initializeTestWorkManager(
             context,
             Configuration.Builder()
-                .setExecutor(Executors.newSingleThreadExecutor())
+                .setExecutor(SynchronousExecutor())
+                .setTaskExecutor(SynchronousExecutor())
                 .build()
         )
         workManager = WorkManager.getInstance(context)
         workManager.cancelAllWork().result.get(10, TimeUnit.SECONDS)
+    }
+
+    @After
+    fun tearDown() {
+        workManager.cancelAllWork().result.get(10, TimeUnit.SECONDS)
+        WorkManagerTestInitHelper.closeWorkDatabase()
     }
 
     @Test
@@ -43,7 +51,12 @@ class ProviderWorkManagerSerializationTest {
         val providerId = 71L
         ProviderSyncWorker.enqueueProvider(context, providerId)
         XtreamIndexWorker.enqueue(context, providerId, initialDelaySeconds = ONE_HOUR_SECONDS)
-        StalkerIndexWorker.enqueue(context, providerId, initialDelaySeconds = ONE_HOUR_SECONDS)
+        StalkerIndexWorker.enqueue(
+            context,
+            providerId,
+            initialDelaySeconds = ONE_HOUR_SECONDS,
+            appendSuccessor = true
+        )
         BackgroundEpgSyncWorker.enqueue(context, providerId, initialDelaySeconds = ONE_HOUR_SECONDS)
 
         val work = workManager.getWorkInfosForUniqueWork(providerWorkUniqueName(providerId))
@@ -58,6 +71,20 @@ class ProviderWorkManagerSerializationTest {
             StalkerIndexWorker::class.java.name,
             BackgroundEpgSyncWorker::class.java.name
         )
+    }
+
+    @Test
+    fun ordinaryStalkerEnqueue_keepsExistingProviderWork() {
+        val providerId = 72L
+        ProviderSyncWorker.enqueueProvider(context, providerId)
+        StalkerIndexWorker.enqueue(context, providerId, initialDelaySeconds = ONE_HOUR_SECONDS)
+
+        val work = workManager.getWorkInfosForUniqueWork(providerWorkUniqueName(providerId))
+            .get(10, TimeUnit.SECONDS)
+
+        assertThat(work).hasSize(1)
+        assertThat(work.single().state).isEqualTo(WorkInfo.State.ENQUEUED)
+        assertThat(work.single().tags).contains(ProviderSyncWorker::class.java.name)
     }
 
     private companion object {

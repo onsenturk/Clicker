@@ -4,6 +4,7 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Transaction
 import com.streamvault.data.local.entity.CategoryImportStageEntity
 import com.streamvault.data.local.entity.ChannelImportStageEntity
 import com.streamvault.data.local.entity.MovieImportStageEntity
@@ -13,6 +14,11 @@ data class ChannelStageCategorySummary(
   val categoryId: Long,
   val name: String,
   val isAdult: Boolean
+)
+
+data class SeriesStageIdentityBackfill(
+    val id: Long,
+    val providerSeriesId: String
 )
 
 @Dao
@@ -592,7 +598,10 @@ interface CatalogSyncDao {
             is_adult,
             is_user_protected,
             sync_fingerprint,
-            added_at
+            added_at,
+            cache_state,
+            detail_hydrated_at,
+            remote_stale_at
         )
         SELECT
             stage.stream_id,
@@ -627,7 +636,10 @@ interface CatalogSyncDao {
                   AND category.is_user_protected = 1
             ) THEN 1 ELSE 0 END,
             stage.sync_fingerprint,
-            stage.added_at
+            stage.added_at,
+            'DETAIL_HYDRATED',
+            0,
+            0
         FROM movie_import_stage AS stage
         WHERE stage.session_id = :sessionId
           AND stage.provider_id = :providerId
@@ -655,6 +667,39 @@ interface CatalogSyncDao {
         """
     )
     suspend fun deleteStaleMoviesForStage(providerId: Long, sessionId: Long)
+
+    @Transaction
+    suspend fun updateChangedSeriesFromStage(providerId: Long, sessionId: Long) {
+        getSeriesIdentityBackfills(providerId, sessionId).forEach { backfill ->
+            backfillSeriesIdentity(providerId, backfill.id, backfill.providerSeriesId)
+        }
+        updateChangedSeriesRowsFromStage(providerId, sessionId)
+    }
+
+    @Query(
+        """
+        SELECT existing.id, MIN(stage.provider_series_id) AS providerSeriesId
+        FROM series_import_stage AS stage
+        JOIN series AS existing
+          ON existing.provider_id = stage.provider_id
+         AND existing.series_id = stage.series_id
+        WHERE stage.session_id = :sessionId
+          AND stage.provider_id = :providerId
+          AND NULLIF(existing.provider_series_id, '') IS NULL
+        GROUP BY existing.id
+        HAVING COUNT(*) = 1 AND NULLIF(MIN(stage.provider_series_id), '') IS NOT NULL
+        """
+    )
+    suspend fun getSeriesIdentityBackfills(providerId: Long, sessionId: Long): List<SeriesStageIdentityBackfill>
+
+    @Query(
+        """
+        UPDATE series SET provider_series_id = :providerSeriesId
+        WHERE id = :id AND provider_id = :providerId
+          AND NULLIF(provider_series_id, '') IS NULL
+        """
+    )
+    suspend fun backfillSeriesIdentity(providerId: Long, id: Long, providerSeriesId: String)
 
     @Query(
         """
@@ -796,7 +841,7 @@ interface CatalogSyncDao {
           )
         """
     )
-    suspend fun updateChangedSeriesFromStage(providerId: Long, sessionId: Long)
+    suspend fun updateChangedSeriesRowsFromStage(providerId: Long, sessionId: Long)
 
     @Query(
         """
@@ -821,7 +866,11 @@ interface CatalogSyncDao {
             provider_id,
             is_adult,
             is_user_protected,
-            sync_fingerprint
+            sync_fingerprint,
+            cache_state,
+            detail_hydrated_at,
+            remote_stale_at,
+            catalog_origin
         )
         SELECT
             stage.series_id,
@@ -850,7 +899,11 @@ interface CatalogSyncDao {
                   AND category.type = 'SERIES'
                   AND category.is_user_protected = 1
             ) THEN 1 ELSE 0 END,
-            stage.sync_fingerprint
+                stage.sync_fingerprint,
+                'DETAIL_HYDRATED',
+                0,
+                0,
+                'NATIVE'
         FROM series_import_stage AS stage
         WHERE stage.session_id = :sessionId
           AND stage.provider_id = :providerId

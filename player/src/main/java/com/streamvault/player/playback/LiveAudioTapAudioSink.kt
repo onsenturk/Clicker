@@ -3,6 +3,7 @@ package com.streamvault.player.playback
 import androidx.media3.common.C
 import androidx.media3.common.Format
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.exoplayer.Renderer
 import androidx.media3.exoplayer.audio.AudioSink
 import com.streamvault.player.LiveAudioPcmBuffer
 import com.streamvault.player.LiveAudioTap
@@ -16,6 +17,13 @@ internal class LiveAudioTapAudioSink(
     private var sampleRate: Int = Format.NO_VALUE
     private var channelCount: Int = Format.NO_VALUE
     private var encoding: Int = C.ENCODING_INVALID
+    private var released = false
+
+    override fun release() {
+        if (released) return
+        released = true
+        delegate.release()
+    }
 
     override fun configure(inputFormat: Format, specifiedBufferSize: Int, outputChannels: IntArray?) {
         sampleRate = inputFormat.sampleRate
@@ -69,5 +77,19 @@ internal class LiveAudioTapAudioSink(
         if (frameSize <= 0 || sampleRate <= 0) return 0L
         val frames = bytePosition / frameSize
         return frames * 1_000_000L / sampleRate
+    }
+}
+
+@UnstableApi
+internal class AudioSinkOwningRenderer(
+    private val delegate: Renderer,
+    private val audioSink: AudioSink
+) : Renderer by delegate {
+    override fun release() {
+        try {
+            delegate.release()
+        } finally {
+            audioSink.release()
+        }
     }
 }

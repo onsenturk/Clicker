@@ -152,6 +152,7 @@ class LauncherProviderInstrumentationTest {
 
     private fun buildWatchNextValues(key: String, title: String): ContentValues = ContentValues().apply {
         put(COLUMN_INTERNAL_PROVIDER_ID, key)
+        put(COLUMN_TYPE, TvContract.PreviewPrograms.TYPE_MOVIE)
         put(COLUMN_TITLE, title)
         put(COLUMN_DESCRIPTION, "Instrumentation validation for Watch Next")
         put(COLUMN_POSTER_ART_URI, resourceArtworkUri().toString())

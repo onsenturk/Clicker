@@ -51,6 +51,7 @@ internal object PreferenceBackupRegistry {
         "last_app_update_check_timestamp", "last_app_update_attempt_timestamp",
         "last_app_update_failure_timestamp", "last_app_update_outcome", "app_update_download_id",
         "app_update_download_version_name", "app_update_downloaded_version_name",
+        "app_update_artifact_version_name", "app_update_artifact_sha256",
         "app_update_latest_version_name", "app_update_latest_version_code", "app_update_release_url",
         "app_update_download_url", "app_update_download_sha256", "app_update_release_notes",
         "app_update_published_at", "last_maintenance_at", "last_maintenance_deleted_programs",

@@ -67,7 +67,7 @@ class FavoriteDaoTest {
         )
         favoriteDao.insert(
             FavoriteEntity(
-                providerId = 2L,
+                providerId = 1L,
                 contentId = 200L,
                 contentType = ContentType.LIVE,
                 position = 1,
@@ -78,10 +78,18 @@ class FavoriteDaoTest {
             FavoriteEntity(
                 providerId = 1L,
                 contentId = 300L,
-                contentType = ContentType.MOVIE,
+                contentType = ContentType.LIVE,
                 position = 2,
                 groupId = liveGroupId
             )
+        )
+        db.openHelper.writableDatabase.execSQL(
+            "UPDATE favorites SET provider_id = ? WHERE content_id = ? AND group_id = ?",
+            arrayOf<Any>(2L, 200L, liveGroupId)
+        )
+        db.openHelper.writableDatabase.execSQL(
+            "UPDATE favorites SET content_type = ? WHERE content_id = ? AND group_id = ?",
+            arrayOf<Any>(ContentType.MOVIE.name, 300L, liveGroupId)
         )
 
         val favorites = favoriteDao.getByGroup(liveGroupId).first()

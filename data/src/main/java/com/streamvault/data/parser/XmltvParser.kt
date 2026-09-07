@@ -5,6 +5,7 @@ import org.xmlpull.v1.XmlPullParser
 import org.xmlpull.v1.XmlPullParserFactory
 import java.io.InputStream
 import java.io.PushbackInputStream
+import java.time.DateTimeException
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.OffsetDateTime
@@ -194,11 +195,13 @@ class XmltvParser {
                             inRating = false
                         }
                         if (parser.name == "programme" && inProgramme) {
-                            if (isValidProgramme(currentChannelId, currentTitle, currentStart, currentEnd)) {
+                            if (currentChannelId != null && currentTitle != null &&
+                                isValidProgramme(currentChannelId, currentTitle, currentStart, currentEnd)
+                            ) {
                                 programs.add(
                                     Program(
-                                        channelId = currentChannelId!!,
-                                        title = currentTitle!!,
+                                        channelId = currentChannelId,
+                                        title = currentTitle,
                                         description = currentDescription ?: "",
                                         startTime = currentStart,
                                         endTime = currentEnd,
@@ -309,11 +312,13 @@ class XmltvParser {
                             inRating = false
                         }
                         if (parser.name == "programme" && inProgramme) {
-                            if (isValidProgramme(currentChannelId, currentTitle, currentStart, currentEnd)) {
+                            if (currentChannelId != null && currentTitle != null &&
+                                isValidProgramme(currentChannelId, currentTitle, currentStart, currentEnd)
+                            ) {
                                 onProgram(
                                     Program(
-                                        channelId = currentChannelId!!,
-                                        title = currentTitle!!,
+                                        channelId = currentChannelId,
+                                        title = currentTitle,
                                         description = currentDescription ?: "",
                                         startTime = currentStart,
                                         endTime = currentEnd,
@@ -490,7 +495,7 @@ class XmltvParser {
                                 onChannel(
                                     XmltvChannel(
                                         id = channelId,
-                                        displayName = channelDisplayName!!,
+                                        displayName = channelDisplayName,
                                         iconUrl = channelIconUrl
                                     )
                                 )
@@ -502,7 +507,9 @@ class XmltvParser {
                             inRating = false
                         }
                         if (parser.name == "programme" && inProgramme) {
-                            if (isValidProgramme(currentChannelId, currentTitle, currentStart, currentEnd)) {
+                            if (currentChannelId != null && currentTitle != null &&
+                                isValidProgramme(currentChannelId, currentTitle, currentStart, currentEnd)
+                            ) {
                                 if (programmeCount >= limits.maxProgrammes) {
                                     throw XmltvLimitExceeded(XmltvLimitKind.PROGRAMMES, limits.maxProgrammes.toLong())
                                 }
@@ -510,8 +517,8 @@ class XmltvParser {
                                 requireXmltvField(genre, limits)
                                 onProgramme(
                                     XmltvProgramme(
-                                        channelId = currentChannelId!!,
-                                        title = currentTitle!!,
+                                        channelId = currentChannelId,
+                                        title = currentTitle,
                                         subtitle = currentSubtitle,
                                         description = currentDescription ?: "",
                                         startTime = currentStart,
@@ -631,8 +638,8 @@ class XmltvParser {
                     ) ?: 0
                 }
             }
-        } catch (_: Exception) {
-            // Give up
+        } catch (error: DateTimeException) {
+            logger.log(Level.WARNING, "XMLTV timestamp fallback failed", error)
         }
 
         if (parsingZoneId == null) {
@@ -644,13 +651,13 @@ class XmltvParser {
     }
 
     private fun isValidProgramme(
-        channelId: String?,
-        title: String?,
+        channelId: String,
+        title: String,
         startTime: Long,
         endTime: Long
     ): Boolean {
-        return !channelId.isNullOrBlank() &&
-            !title.isNullOrBlank() &&
+        return channelId.isNotBlank() &&
+            title.isNotBlank() &&
             startTime > 0L &&
             endTime > startTime
     }
@@ -682,7 +689,7 @@ class XmltvParser {
 
         return try {
             ZoneId.of(normalizedTimezoneId)
-        } catch (error: Exception) {
+        } catch (error: DateTimeException) {
             throw IllegalArgumentException("Invalid XMLTV timezone '$timezoneId'", error)
         }
     }

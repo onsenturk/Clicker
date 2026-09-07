@@ -775,8 +775,7 @@ class DashboardViewModel @Inject constructor(
 
     fun installDownloadedUpdate() {
         viewModelScope.launch {
-            val expectedSha256 = _uiState.value.updateNotice?.downloadSha256
-            when (val result = appUpdateInstaller.installDownloadedUpdate(expectedSha256)) {
+            when (val result = appUpdateInstaller.installDownloadedUpdate()) {
                 is com.streamvault.domain.model.Result.Error -> {
                     _uiState.value = _uiState.value.copy(userMessage = result.message)
                 }

@@ -162,9 +162,10 @@ fun MoviesScreen(
             compactHeader = true,
             showScreenHeader = false
         ) {
-        if (uiState.isReorderMode && uiState.reorderCategory != null) {
+        val reorderCategory = uiState.reorderCategory
+        if (uiState.isReorderMode && reorderCategory != null) {
             ReorderTopBar(
-                categoryName = uiState.reorderCategory!!.name,
+                categoryName = reorderCategory.name,
                 onSave = { viewModel.saveReorder() },
                 onCancel = { viewModel.exitCategoryReorderMode() },
                 subtitle = stringResource(R.string.movies_reorder_subtitle)
@@ -268,8 +269,8 @@ fun MoviesScreen(
         )
     }
 
-    if (uiState.showDialog && uiState.selectedMovieForDialog != null) {
-        val movie = uiState.selectedMovieForDialog!!
+    val movie = uiState.selectedMovieForDialog
+    if (uiState.showDialog && movie != null) {
         com.streamvault.app.ui.components.dialogs.AddToGroupDialog(
             contentTitle = movie.name,
             groups = uiState.categories.filter { it.isVirtual && it.id != VodBrowseDefaults.FAVORITES_SENTINEL_ID },
@@ -288,8 +289,7 @@ fun MoviesScreen(
         )
     }
 
-    if (uiState.selectedCategoryForOptions != null) {
-        val category = uiState.selectedCategoryForOptions!!
+    uiState.selectedCategoryForOptions?.let { category ->
         com.streamvault.app.ui.components.dialogs.CategoryOptionsDialog(
             category = category,
             onDismissRequest = { viewModel.dismissCategoryOptions() },
@@ -310,18 +310,20 @@ fun MoviesScreen(
         )
     }
 
-    if (uiState.showRenameGroupDialog && uiState.groupToRename != null) {
+    val groupToRename = uiState.groupToRename
+    if (uiState.showRenameGroupDialog && groupToRename != null) {
         RenameGroupDialog(
-            initialName = uiState.groupToRename!!.name,
+            initialName = groupToRename.name,
             errorMessage = uiState.renameGroupError,
             onDismissRequest = { viewModel.cancelRenameGroup() },
             onConfirm = { name -> viewModel.confirmRenameGroup(name) }
         )
     }
 
-    if (uiState.showDeleteGroupDialog && uiState.groupToDelete != null) {
+    val groupToDelete = uiState.groupToDelete
+    if (uiState.showDeleteGroupDialog && groupToDelete != null) {
         DeleteGroupDialog(
-            groupName = uiState.groupToDelete!!.name,
+            groupName = groupToDelete.name,
             onDismissRequest = { viewModel.cancelDeleteGroup() },
             onConfirmDelete = { viewModel.confirmDeleteGroup() }
         )

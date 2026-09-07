@@ -12,6 +12,7 @@ import android.os.Environment
 import android.provider.Settings
 import androidx.core.content.FileProvider
 import com.streamvault.app.BuildConfig
+import com.streamvault.data.preferences.AppUpdateArtifactMetadata
 import com.streamvault.data.preferences.PreferencesRepository
 import com.streamvault.domain.model.Result
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -28,6 +29,7 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.io.IOException
 import java.net.URI
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -46,10 +48,14 @@ enum class AppUpdateDownloadStatus {
     Failed
 }
 
+internal fun updateArtifactChecksum(versionName: String, metadata: AppUpdateArtifactMetadata?): String? =
+    metadata?.takeIf { it.versionName == versionName }?.sha256?.let(::normalizedUpdateSha256)
+
 @Singleton
 class AppUpdateInstaller @Inject constructor(
     @ApplicationContext private val context: Context,
-    private val preferencesRepository: PreferencesRepository
+    private val preferencesRepository: PreferencesRepository,
+    private val updateVerifier: AppUpdateVerifier
 ) {
     private val downloadManager = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -80,12 +86,13 @@ class AppUpdateInstaller @Inject constructor(
         val downloadId = preferencesRepository.appUpdateDownloadId.first()
         val downloadingVersionName = preferencesRepository.appUpdateDownloadVersionName.first()
         val downloadedVersionName = preferencesRepository.downloadedAppUpdateVersionName.first()
+        val artifactMetadata = preferencesRepository.appUpdateArtifactMetadata.first()
         val apkFile = downloadedVersionName?.let(::apkFileForVersion)
 
         if (downloadId == null) {
             preferencesRepository.setAppUpdateDownloadVersionName(null)
             val restoredState = if (downloadedVersionName != null && apkFile?.exists() == true) {
-                downloadedState(downloadedVersionName)
+                downloadedState(downloadedVersionName, artifactMetadata)
             } else {
                 if (downloadedVersionName != null) {
                     preferencesRepository.setDownloadedAppUpdateVersionName(null)
@@ -103,7 +110,7 @@ class AppUpdateInstaller @Inject constructor(
                 preferencesRepository.setAppUpdateDownloadId(null)
                 preferencesRepository.setAppUpdateDownloadVersionName(null)
                 val fallbackState = if (downloadedVersionName != null && apkFile?.exists() == true) {
-                    downloadedState(downloadedVersionName)
+                    downloadedState(downloadedVersionName, artifactMetadata)
                 } else {
                     preferencesRepository.setDownloadedAppUpdateVersionName(null)
                     AppUpdateDownloadState(status = AppUpdateDownloadStatus.Failed)
@@ -129,7 +136,7 @@ class AppUpdateInstaller @Inject constructor(
                     val completedApkFile = trackedVersionName?.let(::apkFileForVersion)
                     if (trackedVersionName != null && completedApkFile?.exists() == true) {
                         preferencesRepository.setDownloadedAppUpdateVersionName(trackedVersionName)
-                        downloadedState(trackedVersionName)
+                        downloadedState(trackedVersionName, artifactMetadata)
                     } else {
                         preferencesRepository.setDownloadedAppUpdateVersionName(null)
                         AppUpdateDownloadState(
@@ -165,7 +172,11 @@ class AppUpdateInstaller @Inject constructor(
         if (!isHttpsUrl(downloadUrl)) {
             return@withContext Result.error("Update download is unavailable because the download URL is not HTTPS")
         }
+        val checksum = normalizedUpdateSha256(releaseInfo.downloadSha256)
+            ?: return@withContext Result.error("This release has no valid update checksum. Check for updates again later.")
 
+        var enqueuedDownloadId: Long? = null
+        var metadataSaved = false
         try {
             val targetFile = apkFileForVersion(releaseInfo.versionName)
             targetFile.parentFile?.mkdirs()
@@ -195,9 +206,9 @@ class AppUpdateInstaller @Inject constructor(
                 )
 
             val downloadId = downloadManager.enqueue(request)
-            preferencesRepository.setAppUpdateDownloadId(downloadId)
-            preferencesRepository.setAppUpdateDownloadVersionName(releaseInfo.versionName)
-            preferencesRepository.setDownloadedAppUpdateVersionName(null)
+            enqueuedDownloadId = downloadId
+            preferencesRepository.setAppUpdateDownloadMetadata(downloadId, releaseInfo.versionName, checksum)
+            metadataSaved = true
             val state = AppUpdateDownloadState(
                 status = AppUpdateDownloadStatus.Downloading,
                 versionName = releaseInfo.versionName,
@@ -210,13 +221,34 @@ class AppUpdateInstaller @Inject constructor(
             Result.error("Failed to start update download", error)
         } catch (error: SecurityException) {
             Result.error("Update download requires additional permissions", error)
+        } catch (error: IOException) {
+            Result.error("Update download metadata could not be saved", error)
+        } finally {
+            if (!metadataSaved) {
+                enqueuedDownloadId?.let { downloadId -> runCatching { downloadManager.remove(downloadId) } }
+            }
         }
     }
 
-    suspend fun installDownloadedUpdate(expectedSha256: String? = null): Result<Unit> = withContext(Dispatchers.IO) {
+    suspend fun installDownloadedUpdate(): Result<Unit> = withContext(Dispatchers.IO) {
         val currentState = refreshState()
         if (currentState.status != AppUpdateDownloadStatus.Downloaded || currentState.versionName.isNullOrBlank()) {
             return@withContext Result.error("No downloaded update is ready to install")
+        }
+
+        val expectedSha256 = updateArtifactChecksum(
+            currentState.versionName,
+            preferencesRepository.appUpdateArtifactMetadata.first()
+        ) ?: return@withContext Result.error("Update verification metadata is missing. Download the update again.")
+        val apkFile = apkFileForVersion(currentState.versionName)
+        val verifiedFile = when (val verification = updateVerifier.verifyAndStage(apkFile, expectedSha256)) {
+            is Result.Success -> verification.data
+            is Result.Error -> {
+                preferencesRepository.setDownloadedAppUpdateVersionName(null)
+                _downloadState.value = AppUpdateDownloadState(status = AppUpdateDownloadStatus.Failed)
+                return@withContext Result.error(verification.message, verification.exception)
+            }
+            Result.Loading -> return@withContext Result.error("Update verification has not completed")
         }
 
         if (requiresInstallPermission()) {
@@ -236,39 +268,10 @@ class AppUpdateInstaller @Inject constructor(
             }
         }
 
-        val apkFile = apkFileForVersion(currentState.versionName)
-        if (!apkFile.exists()) {
-            preferencesRepository.setAppUpdateDownloadId(null)
-            preferencesRepository.setAppUpdateDownloadVersionName(null)
-            preferencesRepository.setDownloadedAppUpdateVersionName(null)
-            return@withContext Result.error("Downloaded update file is missing")
-        }
-
-        // SEC-L02: Verify SHA-256 integrity before handing the APK to the package manager.
-        // This guards against a truncated download, a network MITM, or a tampered file in
-        // the external storage directory (which is world-readable on unencrypted devices).
-        if (!expectedSha256.isNullOrBlank()) {
-            val actualHash = computeSha256Hex(apkFile)
-            if (!actualHash.equals(expectedSha256.trim(), ignoreCase = true)) {
-                android.util.Log.e(
-                    "AppUpdateInstaller",
-                    "APK SHA-256 mismatch for ${apkFile.name}: expected=${expectedSha256.trim()} actual=$actualHash"
-                )
-                apkFile.delete()
-                preferencesRepository.setAppUpdateDownloadId(null)
-                preferencesRepository.setAppUpdateDownloadVersionName(null)
-                preferencesRepository.setDownloadedAppUpdateVersionName(null)
-                return@withContext Result.error(
-                    "Downloaded update failed integrity check. The file has been removed; please download again."
-                )
-            }
-            android.util.Log.i("AppUpdateInstaller", "APK SHA-256 verified OK for ${apkFile.name}")
-        }
-
         val apkUri = FileProvider.getUriForFile(
             context,
             "${BuildConfig.APPLICATION_ID}.fileprovider",
-            apkFile
+            verifiedFile
         )
 
         val installIntent = Intent(Intent.ACTION_VIEW).apply {
@@ -296,18 +299,6 @@ class AppUpdateInstaller @Inject constructor(
         }.getOrDefault(false)
     }
 
-    private fun computeSha256Hex(file: File): String {
-        val digest = java.security.MessageDigest.getInstance("SHA-256")
-        file.inputStream().buffered(DEFAULT_BUFFER_SIZE).use { stream ->
-            val buffer = ByteArray(8192)
-            var read: Int
-            while (stream.read(buffer).also { read = it } != -1) {
-                digest.update(buffer, 0, read)
-            }
-        }
-        return digest.digest().joinToString("") { "%02x".format(it) }
-    }
-
     private fun apkFileForVersion(versionName: String): File {
         val sanitizedVersion = versionName.replace(Regex("[^A-Za-z0-9._-]"), "_")
         val downloadsDir = context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)
@@ -315,7 +306,10 @@ class AppUpdateInstaller @Inject constructor(
         return File(downloadsDir, "StreamVault-$sanitizedVersion.apk")
     }
 
-    private fun downloadedState(versionName: String): AppUpdateDownloadState {
+    private fun downloadedState(versionName: String, metadata: AppUpdateArtifactMetadata?): AppUpdateDownloadState {
+        if (updateArtifactChecksum(versionName, metadata) == null) {
+            return AppUpdateDownloadState(status = AppUpdateDownloadStatus.Failed, versionName = versionName)
+        }
         return AppUpdateDownloadState(
             status = AppUpdateDownloadStatus.Downloaded,
             versionName = versionName,

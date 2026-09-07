@@ -14,7 +14,8 @@ Every schema change must satisfy this checklist before the database version is a
 
 ## Current verification
 
-- Current schema: v75.
-- Exported historical origins: v1 and v3-v74; v2 has no committed Room schema export.
-- `StreamVaultDatabaseMigrationTest` validates all exported origins to v75 plus populated direct/multi-hop preservation fixtures.
-- Device result (2026-08-13): 37/37 passed on `Television_1080p(AVD) - 16`.
+- Current schema: v78.
+- Exported historical origins: v1 and v3-v77; v2 has no committed Room schema export.
+- `StreamVaultDatabaseMigrationTest` validates all exported origins to the current version plus populated direct/multi-hop preservation fixtures.
+- Migration 77 to 78 rebuilds only the series freshness index with directions matching `last_modified DESC, name ASC, id ASC`; it does not rewrite table data.
+- Device result (2026-09-07): 43/43 migration tests passed on `Pixel_9_Pro(AVD) - 16`, including all historical origins, populated multi-hop preservation, foreign-key checks, and adjacent index-direction validation.

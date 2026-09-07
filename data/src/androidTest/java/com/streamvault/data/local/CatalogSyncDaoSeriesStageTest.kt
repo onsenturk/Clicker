@@ -70,6 +70,10 @@ class CatalogSyncDaoSeriesStageTest {
         assertThat(inserted).isNotNull()
         assertThat(inserted?.providerSeriesId).isEqualTo("55000:55000")
         assertThat(inserted?.seriesId).isEqualTo(256103980L)
+        assertThat(inserted?.cacheState).isEqualTo("DETAIL_HYDRATED")
+        assertThat(inserted?.detailHydratedAt).isEqualTo(0L)
+        assertThat(inserted?.remoteStaleAt).isEqualTo(0L)
+        assertThat(inserted?.catalogOrigin).isEqualTo(SeriesCatalogOrigin.NATIVE)
     }
 
     @Test
@@ -100,12 +104,75 @@ class CatalogSyncDaoSeriesStageTest {
             )
         )
 
+        val originalId = requireNotNull(seriesDao.getBySeriesId(1L, 256103980L)).id
         catalogSyncDao.updateChangedSeriesFromStage(providerId = 1L, sessionId = 11L)
 
         val updated = seriesDao.getBySeriesId(1L, 256103980L)
 
+        assertThat(updated?.id).isEqualTo(originalId)
         assertThat(updated?.providerSeriesId).isEqualTo("55000:55000")
         assertThat(updated?.syncFingerprint).isEqualTo("new-fingerprint")
+    }
+
+    @Test
+    fun updateChangedSeriesFromStage_doesNotRebindEstablishedIdentity() = runTest {
+        providerDao.insert(provider(1L))
+        seriesDao.insertAll(
+            listOf(
+                SeriesEntity(
+                    seriesId = 42L,
+                    providerSeriesId = "original:42",
+                    name = "Original",
+                    providerId = 1L,
+                    syncFingerprint = "original"
+                )
+            )
+        )
+        catalogSyncDao.insertSeriesStages(
+            listOf(
+                SeriesImportStageEntity(
+                    sessionId = 12L,
+                    providerId = 1L,
+                    seriesId = 42L,
+                    providerSeriesId = "different:42",
+                    name = "Different",
+                    syncFingerprint = "different"
+                )
+            )
+        )
+
+        catalogSyncDao.updateChangedSeriesFromStage(1L, 12L)
+
+        val original = requireNotNull(seriesDao.getBySeriesId(1L, 42L))
+        assertThat(original.providerSeriesId).isEqualTo("original:42")
+        assertThat(original.name).isEqualTo("Original")
+        assertThat(original.syncFingerprint).isEqualTo("original")
+    }
+
+    @Test
+    fun updateChangedSeriesFromStage_doesNotGuessAmbiguousLegacyIdentity() = runTest {
+        providerDao.insert(provider(1L))
+        seriesDao.insertAll(
+            listOf(SeriesEntity(seriesId = 42L, name = "Legacy", providerId = 1L))
+        )
+        catalogSyncDao.insertSeriesStages(
+            listOf("first:42", "second:42").map { remoteId ->
+                SeriesImportStageEntity(
+                    sessionId = 13L,
+                    providerId = 1L,
+                    seriesId = 42L,
+                    providerSeriesId = remoteId,
+                    name = remoteId,
+                    syncFingerprint = remoteId
+                )
+            }
+        )
+
+        catalogSyncDao.updateChangedSeriesFromStage(1L, 13L)
+
+        val original = requireNotNull(seriesDao.getBySeriesId(1L, 42L))
+        assertThat(original.providerSeriesId).isNull()
+        assertThat(original.name).isEqualTo("Legacy")
     }
 
     @Test

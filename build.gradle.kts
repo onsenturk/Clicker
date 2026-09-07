@@ -31,13 +31,16 @@ tasks.register("verifyLintBaseline") {
     group = "verification"
     description =
         "Verifies the committed lint baselines are present, non-empty, and no larger than their recorded ceilings."
+    val baselines = lintBaselineCeilings.map { (path, ceiling) ->
+        Triple(path, layout.projectDirectory.file(path).asFile, ceiling)
+    }
+    inputs.files(baselines.map { it.second })
+    inputs.property("ceilings", lintBaselineCeilings)
     doLast {
-        val baselinePaths = lintBaselineCeilings.keys.toList()
         val issuePattern = Regex("""<issue(?:\s|>)""")
         val issueIdPattern = Regex("""<issue\b[^>]*\bid=\"([^\"]+)\"""")
 
-        baselinePaths.forEach { path ->
-            val baseline = rootProject.file(path)
+        baselines.forEach { (path, baseline, ceiling) ->
             check(baseline.isFile) {
                 "Lint baseline not found: $path"
             }
@@ -65,7 +68,6 @@ tasks.register("verifyLintBaseline") {
 
             // Ratchet: the backlog may shrink freely, but growing it requires an explicit,
             // reviewable bump of the ceiling above.
-            val ceiling = lintBaselineCeilings.getValue(path)
             check(issueCount <= ceiling) {
                 "Lint baseline grew from at most $ceiling to $issueCount issues: $path. " +
                     "Fix the new warnings instead of baselining them, or raise the ceiling in " +

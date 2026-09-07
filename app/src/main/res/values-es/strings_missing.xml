@@ -1,4 +1,4 @@
-<?xml version='1.0' encoding='utf-8'?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="nav_plugins">Plugins</string>
     <string name="welcome_loading_subtitle">Opening the right screen for this device.</string>
@@ -107,18 +107,6 @@
     <string name="settings_crash_report_deleted">Crash report deleted.</string>
     <string name="settings_crash_report_delete_failed">Could not delete crash report.</string>
     <string name="settings_catalog_count_indexing">Indexing</string>
-    <string name="setup_phone_pairing_title">Add from phone</string>
-    <string name="setup_phone_pairing_body">Scan a QR code and enter provider credentials from a phone on the same Wi-Fi.</string>
-    <string name="setup_phone_pairing_start">Show QR code</string>
-    <string name="setup_phone_pairing_restart">New QR code</string>
-    <string name="setup_phone_pairing_stop">Stop pairing</string>
-    <string name="setup_phone_pairing_same_wifi">Open this from a phone on the same Wi-Fi. Credentials are sent directly to this TV.</string>
-    <string name="setup_phone_pairing_qr_description">QR code for phone provider setup</string>
-    <string name="setup_phone_pairing_idle">Local only</string>
-    <string name="setup_phone_pairing_ready">Scan now</string>
-    <string name="setup_phone_pairing_receiving">Adding</string>
-    <string name="setup_phone_pairing_complete">Added</string>
-    <string name="setup_phone_pairing_error">Error</string>
     <string name="setup_xtream_live_sync_mode_label">Xtream Live Sync</string>
     <string name="setup_xtream_live_sync_mode_helper">Choose how Live TV channels are fetched. Auto protects weak devices and routine refreshes while keeping categories populated.</string>
     <string name="setup_xtream_live_sync_mode_auto_title">Auto</string>

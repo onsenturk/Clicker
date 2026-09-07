@@ -2,6 +2,32 @@
 
 Follow-up work to the build/CI hardening on `copilot/check-repo-for-improvements`.
 
+## Implementation status (2026-09-07)
+
+The high-priority changes and subsequent production-blocker fixes are implemented and
+verified in the working tree. A release candidate is built; **official signing is still
+required before installation or publication**. See
+[docs/OPTIMIZATION_VALIDATION.md](docs/OPTIMIZATION_VALIDATION.md) for exact evidence,
+artifacts, and limitations. The original backlog follows this status section; its counts
+describe the historical starting point, not the current tree.
+
+| Item | Status |
+|---|---|
+| 1.1 DAO split | Implemented: six domain files plus six shared projections in `DaoProjections.kt`. The initial split preserved generated code and historical schemas. Subsequent, separately tested hardening fixes catalog insert defaults and legacy identities. All 76 data device tests pass on API 25 and 36, including 43 migration tests. |
+| 1.2 Configuration cache | Implemented with strict failures, tracked file/signing providers, cache-compatible verification tasks, and an injected beta timestamp. Debug and disposable-key signed-release builds reuse the cache. Official-key validation remains required. |
+| 1.3 FFmpeg ownership | Implemented: `:player` exports the version-catalog-derived, verified AAR. Both ARM ABIs are packaged; native-library/MP2 tests pass. ARM64 ELF and APK alignment pass 16 KiB checks. Two live HLS channels passed two-minute capture and cleanup tests; audible MP2 playback on physical hardware remains unverified. |
+| 2.1 Log stripping | Deferred. No levels were stripped and no stripping-specific size comparison was made. Diagnostic read logging remains opt-in; the documented live evidence is preserved. |
+| 2.2 Nullability audit | Targeted pass implemented: 35 assertions removed across movie/series screens, XMLTV, Stalker parsing, hydration, and backup preferences. 32 remain outside this pass. Malformed XMLTV continuation has a regression test. |
+| 2.3 Exception audit | Empty/comment-only `:data` catches audited. XMLTV date catches narrowed and made diagnostic; remaining silent reminder catches document durable reconciliation. This is not a complete review of every broad catch or `runCatching`. |
+| Priority 3 | Deferred to the separate, characterization-tested PRs required below. |
+| 4.1 Device coverage | Native FFmpeg, heap-backed player lifecycle, and opt-in two-channel live-capture tests added. API 36 TV app suite passes all 30 tests without skips; API 25 platform/focus/memory slice passes all 10. External live tests require explicit opt-in. `:domain` is a JVM module with 132 passing unit tests. |
+| 4.2-4.4 | Convention plugins, themed lint burndown, and wider dependency review remain follow-up work. R8 8.13.19 resolves Kotlin metadata compatibility without changing AGP, Gradle, Kotlin, Media3, or OkHttp. Schema v78 corrects the series freshness index sort order with a non-destructive adjacent migration. |
+
+Production hardening also fixed heap-confirmed live-audio callback retention, video-frame
+listener retention, and audio-output callback ownership. The final baseline has 1,726
+passing unit tests, no new lint issues, and 63 backup tests passing with a 128 MiB heap.
+These measured checks are not a guarantee of zero defects or leaks in every workload.
+
 Everything already landed on that branch (PR validation workflow, Gradle parallel/build-cache,
 lint-baseline ratchet, packaging excludes, release native symbols, untracking committed build
 logs) is **done** and is not repeated here.

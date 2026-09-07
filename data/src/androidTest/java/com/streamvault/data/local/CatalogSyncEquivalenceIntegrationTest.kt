@@ -52,31 +52,34 @@ class CatalogSyncEquivalenceIntegrationTest {
 
     @Test
     fun fullImportAndSectionRepairsConvergeToEquivalentActiveCatalogs() = runTest {
-        val fullProviderId = insertProvider("Full")
-        val repairProviderId = insertProvider("Repair")
-        seedStaleCatalog(fullProviderId)
-        seedStaleCatalog(repairProviderId)
+        val providerId = insertProvider("Catalog")
+        seedStaleCatalog(providerId)
 
         val importer = playlistImporter()
-        importer.importPlaylist(provider(fullProviderId), onProgress = null)
+        importer.importPlaylist(provider(providerId), onProgress = null)
+        val fullChannels = channelSnapshot(providerId)
+        val fullMovies = movieSnapshot(providerId)
+        val fullCategories = categorySnapshot(providerId)
+
+        seedStaleCatalog(providerId)
         importer.importPlaylist(
-            provider(repairProviderId),
+            provider(providerId),
             onProgress = null,
             includeLive = true,
             includeMovies = false
         )
         importer.importPlaylist(
-            provider(repairProviderId),
+            provider(providerId),
             onProgress = null,
             includeLive = false,
             includeMovies = true
         )
 
-        assertThat(channelSnapshot(fullProviderId)).isEqualTo(channelSnapshot(repairProviderId))
-        assertThat(movieSnapshot(fullProviderId)).isEqualTo(movieSnapshot(repairProviderId))
-        assertThat(categorySnapshot(fullProviderId)).isEqualTo(categorySnapshot(repairProviderId))
-        assertThat(channelSnapshot(fullProviderId).map { it.streamId }).doesNotContain(999L)
-        assertThat(movieSnapshot(fullProviderId).map { it.streamId }).doesNotContain(999L)
+        assertThat(channelSnapshot(providerId)).isEqualTo(fullChannels)
+        assertThat(movieSnapshot(providerId)).isEqualTo(fullMovies)
+        assertThat(categorySnapshot(providerId)).isEqualTo(fullCategories)
+        assertThat(channelSnapshot(providerId).map { it.streamId }).doesNotContain(999L)
+        assertThat(movieSnapshot(providerId).map { it.streamId }).doesNotContain(999L)
     }
 
     private suspend fun insertProvider(name: String): Long = db.providerDao().insert(

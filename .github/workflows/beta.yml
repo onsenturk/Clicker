@@ -86,7 +86,7 @@ jobs:
         run: chmod +x gradlew
 
       - name: Build beta APK
-        run: ./gradlew --console=plain --parallel --build-cache :app:assembleBeta
+        run: ./gradlew --console=plain --parallel --build-cache -PbuildTimestamp="$(date +%s000)" :app:assembleBeta
 
       - name: Prepare beta artifact
         shell: bash

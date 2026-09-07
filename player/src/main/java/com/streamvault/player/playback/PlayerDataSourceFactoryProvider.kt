@@ -127,20 +127,13 @@ class PlayerDataSourceFactoryProvider(
         headers: Map<String, String>,
         preload: Boolean
     ) {
-        val hasStalkerHeaders = headers.containsKey("X-User-Agent") ||
-            headers.containsKey("Authorization") ||
-            headers["Cookie"]?.contains("mac=", ignoreCase = true) == true
-        if (!hasStalkerHeaders) {
-            return
-        }
-        val uri = runCatching { URI(streamInfo.url) }.getOrNull()
-        Log.d(
-            TAG,
-            "Playback request headers preload=$preload host=${uri?.host.orEmpty()} path=${uri?.path.orEmpty()} " +
-                "ua=${!streamInfo.userAgent.isNullOrBlank()} referer=${headers.containsKey("Referer")} " +
-                "cookie=${headers.containsKey("Cookie")} auth=${headers.containsKey("Authorization")} " +
-                "xua=${headers.containsKey("X-User-Agent")}"
-        )
+        val message = playbackRequestShapeLogMessage(
+            url = streamInfo.url,
+            userAgent = streamInfo.userAgent,
+            headers = headers,
+            preload = preload
+        ) ?: return
+        Log.d(TAG, message)
     }
 
     private fun streamPort(url: String): Int {
@@ -158,6 +151,23 @@ class PlayerDataSourceFactoryProvider(
         val port = proxyPort ?: return null
         return Proxy(Proxy.Type.HTTP, InetSocketAddress(host, port))
     }
+}
+
+internal fun playbackRequestShapeLogMessage(
+    url: String,
+    userAgent: String?,
+    headers: Map<String, String>,
+    preload: Boolean
+): String? {
+    val hasStalkerHeaders = headers.containsKey("X-User-Agent") ||
+        headers.containsKey("Authorization") ||
+        headers["Cookie"]?.contains("mac=", ignoreCase = true) == true
+    if (!hasStalkerHeaders) return null
+
+    return "Playback request headers preload=$preload target=${PlaybackLogSanitizer.sanitizeUrl(url)} " +
+        "ua=${!userAgent.isNullOrBlank()} referer=${headers.containsKey("Referer")} " +
+        "cookie=${headers.containsKey("Cookie")} auth=${headers.containsKey("Authorization")} " +
+        "xua=${headers.containsKey("X-User-Agent")}"
 }
 
 internal fun effectivePlaybackRequestProperties(

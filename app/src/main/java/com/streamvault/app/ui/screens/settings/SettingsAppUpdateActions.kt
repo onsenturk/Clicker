@@ -143,7 +143,7 @@ internal class SettingsAppUpdateActions(
 
     fun installDownloadedUpdate(scope: CoroutineScope) {
         scope.launch {
-            when (val result = appUpdateInstaller.installDownloadedUpdate(uiState.value.appUpdate.downloadSha256)) {
+            when (val result = appUpdateInstaller.installDownloadedUpdate()) {
                 is Result.Error -> uiState.update { it.copy(userMessage = result.message) }
                 is Result.Success -> uiState.update {
                     it.copy(userMessage = appContext.getString(R.string.settings_update_install_started))

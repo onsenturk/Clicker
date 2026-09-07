@@ -105,30 +105,32 @@ internal class VodCategoryHydrationCoordinator(
                             hydration?.advertisedTotalPages != page.advertisedTotalPages
                         ) {
                             val prior = hydration ?: VodCategoryHydrationEntity(providerId, categoryId)
-                            hydration = prior.copy(
+                            val updatedHydration = prior.copy(
                                 lastAttemptedPage = page.page,
                                 lastStatus = "ANOMALY",
                                 lastError = "Portal changed its advertised catalog page count while loading.",
                                 retryAfterMs = 0L
                             )
-                            vodCategoryHydrationDao.upsert(hydration!!)
+                            hydration = updatedHydration
+                            vodCategoryHydrationDao.upsert(updatedHydration)
                             return@withVodCategoryLock Result.error(
-                                hydration!!.lastError ?: "Portal changed its advertised page count"
+                                updatedHydration.lastError ?: "Portal changed its advertised page count"
                             )
                         }
                         val pageFingerprint = page.items.joinToString("|") { it.rawItemId }
                             .takeIf(String::isNotEmpty)
                         if (pageFingerprint != null && !seenPageFingerprints.add(pageFingerprint)) {
                             val prior = hydration ?: VodCategoryHydrationEntity(providerId, categoryId)
-                            hydration = prior.copy(
+                            val updatedHydration = prior.copy(
                                 lastAttemptedPage = page.page,
                                 lastStatus = "ANOMALY",
                                 lastError = "Portal repeated a catalog page while loading page ${page.page}.",
                                 retryAfterMs = 0L
                             )
-                            vodCategoryHydrationDao.upsert(hydration!!)
+                            hydration = updatedHydration
+                            vodCategoryHydrationDao.upsert(updatedHydration)
                             return@withVodCategoryLock Result.error(
-                                hydration!!.lastError ?: "Portal repeated a catalog page"
+                                updatedHydration.lastError ?: "Portal repeated a catalog page"
                             )
                         }
                         val category = categoryDao.getByProviderAndTypeSync(providerId, ContentType.VOD.name)
@@ -178,7 +180,7 @@ internal class VodCategoryHydrationCoordinator(
                             seriesDao.upsertCategoryPage(providerId, series)
                             vodCatalogEntryDao.replacePage(providerId, categoryId, page.page, entries)
                             val persistedCount = vodCatalogEntryDao.countByCategory(providerId, categoryId)
-                            hydration = VodCategoryHydrationEntity(
+                            val updatedHydration = VodCategoryHydrationEntity(
                                 providerId = providerId,
                                 categoryId = categoryId,
                                 lastLoadedPage = page.page,
@@ -200,7 +202,8 @@ internal class VodCategoryHydrationCoordinator(
                                 retryBudgetRemaining = STALKER_CATEGORY_RETRY_BUDGET,
                                 lastPageFingerprint = pageFingerprint
                             )
-                            vodCategoryHydrationDao.upsert(hydration!!)
+                            hydration = updatedHydration
+                            vodCategoryHydrationDao.upsert(updatedHydration)
                         }
                         if (truncated) {
                             return@withVodCategoryLock Result.error(
@@ -214,14 +217,15 @@ internal class VodCategoryHydrationCoordinator(
                     }
                     is Result.Error -> {
                         val prior = hydration ?: VodCategoryHydrationEntity(providerId, categoryId)
-                        hydration = prior.copy(
+                        val updatedHydration = prior.copy(
                             lastAttemptedPage = nextPage,
                             lastStatus = "FAILED_RETRYABLE",
                             lastError = pageResult.message,
                             failureCount = prior.failureCount + 1,
                             retryBudgetRemaining = (prior.retryBudgetRemaining - 1).coerceAtLeast(0)
                         )
-                        vodCategoryHydrationDao.upsert(hydration!!)
+                        hydration = updatedHydration
+                        vodCategoryHydrationDao.upsert(updatedHydration)
                         return@withVodCategoryLock Result.error(pageResult.message, pageResult.exception)
                     }
                     Result.Loading -> return@withVodCategoryLock Result.error("VOD hydration did not complete")
@@ -310,30 +314,32 @@ internal class VodCategoryHydrationCoordinator(
                             hydration?.advertisedTotalPages != page.advertisedTotalPages
                         ) {
                             val prior = hydration ?: MovieCategoryHydrationEntity(providerId, movieCategoryId)
-                            hydration = prior.copy(
+                            val updatedHydration = prior.copy(
                                 lastAttemptedPage = page.page,
                                 lastStatus = "ANOMALY",
                                 lastError = "Portal changed its advertised catalog page count while loading.",
                                 retryAfterMs = 0L
                             )
-                            movieCategoryHydrationDao.upsert(hydration!!)
+                            hydration = updatedHydration
+                            movieCategoryHydrationDao.upsert(updatedHydration)
                             return@withVodCategoryLock Result.error(
-                                hydration!!.lastError ?: "Portal changed its advertised page count"
+                                updatedHydration.lastError ?: "Portal changed its advertised page count"
                             )
                         }
                         val pageFingerprint = page.items.joinToString("|") { it.rawItemId }
                             .takeIf(String::isNotEmpty)
                         if (pageFingerprint != null && !seenPageFingerprints.add(pageFingerprint)) {
                             val prior = hydration ?: MovieCategoryHydrationEntity(providerId, movieCategoryId)
-                            hydration = prior.copy(
+                            val updatedHydration = prior.copy(
                                 lastAttemptedPage = page.page,
                                 lastStatus = "ANOMALY",
                                 lastError = "Portal repeated a catalog page while loading page ${page.page}.",
                                 retryAfterMs = 0L
                             )
-                            movieCategoryHydrationDao.upsert(hydration!!)
+                            hydration = updatedHydration
+                            movieCategoryHydrationDao.upsert(updatedHydration)
                             return@withVodCategoryLock Result.error(
-                                hydration!!.lastError ?: "Portal repeated a catalog page"
+                                updatedHydration.lastError ?: "Portal repeated a catalog page"
                             )
                         }
                         val movies = page.items.mapNotNull { (it.item as? VodCatalogItem.MovieItem)?.movie?.toEntity() }
@@ -380,7 +386,7 @@ internal class VodCategoryHydrationCoordinator(
                             seriesDao.upsertCategoryPage(providerId, derivedSeries)
                             movieCount = movieDao.getCountByCategory(providerId, movieCategoryId).first()
                             val seriesCount = seriesDao.getCountByCategory(providerId, seriesCategoryId).first()
-                            hydration = MovieCategoryHydrationEntity(
+                            val updatedHydration = MovieCategoryHydrationEntity(
                                 providerId = providerId,
                                 categoryId = movieCategoryId,
                                 lastHydratedAt = attemptAt,
@@ -398,7 +404,8 @@ internal class VodCategoryHydrationCoordinator(
                                 retryBudgetRemaining = STALKER_CATEGORY_RETRY_BUDGET,
                                 lastPageFingerprint = pageFingerprint
                             )
-                            movieCategoryHydrationDao.upsert(hydration!!)
+                            hydration = updatedHydration
+                            movieCategoryHydrationDao.upsert(updatedHydration)
                             if (incomingSeries.isNotEmpty() || existingSeriesHydration != null) {
                                 seriesCategoryHydrationDao.upsert(
                                     SeriesCategoryHydrationEntity(

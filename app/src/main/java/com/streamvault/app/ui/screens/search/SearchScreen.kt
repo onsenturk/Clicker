@@ -22,6 +22,8 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
@@ -43,6 +45,7 @@ import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Star
 import androidx.tv.material3.*
 import com.streamvault.app.R
+import com.streamvault.app.device.rememberIsTelevisionDevice
 import com.streamvault.app.ui.components.CategoryRow
 import com.streamvault.app.ui.components.SearchInput
 import com.streamvault.app.ui.components.ChannelCard
@@ -536,6 +539,8 @@ fun SearchScreen(
         )
     }
 
+    val compactSearch = !rememberIsTelevisionDevice() &&
+        LocalWindowInfo.current.containerSize.height < with(LocalDensity.current) { 480.dp.toPx() }
     AppScreenScaffold(
         currentRoute = currentRoute,
         onNavigate = onNavigate,
@@ -566,7 +571,8 @@ fun SearchScreen(
                     },
                     onClearRecentQueries = viewModel::clearRecentQueries,
                     focusRequester = searchFocusRequester,
-                    selectedStateLabel = selectedTabDescription
+                    selectedStateLabel = selectedTabDescription,
+                    compactLayout = compactSearch
                 )
             }
 
@@ -809,7 +815,7 @@ fun SearchScreen(
 }
 
 @Composable
-private fun SearchHeroPanel(
+internal fun SearchHeroPanel(
     query: String,
     selectedTab: SearchTab,
     recentQueries: List<String>,
@@ -820,57 +826,68 @@ private fun SearchHeroPanel(
     onRecentQuerySelected: (String) -> Unit,
     onClearRecentQueries: () -> Unit,
     focusRequester: FocusRequester,
-    selectedStateLabel: String
+    selectedStateLabel: String,
+    modifier: Modifier = Modifier,
+    compactLayout: Boolean = false
 ) {
     Surface(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(24.dp),
         colors = SurfaceDefaults.colors(containerColor = SurfaceElevated.copy(alpha = 0.92f))
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 18.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
+                .padding(horizontal = 20.dp, vertical = if (compactLayout) 10.dp else 18.dp),
+            verticalArrangement = Arrangement.spacedBy(if (compactLayout) 8.dp else 14.dp)
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                verticalAlignment = Alignment.Top
-            ) {
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+            if (compactLayout) {
+                Text(
+                    text = stringResource(R.string.search_title),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = TextPrimary,
+                    modifier = Modifier.semantics { heading() }
+                )
+            } else {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    verticalAlignment = Alignment.Top
                 ) {
-                    Text(
-                        text = stringResource(R.string.search_title),
-                        style = MaterialTheme.typography.headlineMedium,
-                        color = TextPrimary,
-                        modifier = Modifier.semantics { heading() }
-                    )
-                    Text(
-                        text = stringResource(R.string.search_command_subtitle),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = TextSecondary,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.widthIn(max = 640.dp)
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            text = stringResource(R.string.search_title),
+                            style = MaterialTheme.typography.headlineMedium,
+                            color = TextPrimary,
+                            modifier = Modifier.semantics { heading() }
+                        )
+                        Text(
+                            text = stringResource(R.string.search_command_subtitle),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = TextSecondary,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.widthIn(max = 640.dp)
+                        )
+                    }
+
+                    SearchStatusCard(
+                        title = if (query.length >= 2) {
+                            stringResource(R.string.search_results_title, totalResults)
+                        } else {
+                            stringResource(R.string.search_ready_title)
+                        },
+                        body = if (query.length >= 2) {
+                            stringResource(R.string.search_screen_subtitle)
+                        } else {
+                            stringResource(R.string.search_type_to_search)
+                        },
+                        modifier = Modifier.widthIn(min = 220.dp, max = 360.dp)
                     )
                 }
-
-                SearchStatusCard(
-                    title = if (query.length >= 2) {
-                        stringResource(R.string.search_results_title, totalResults)
-                    } else {
-                        stringResource(R.string.search_ready_title)
-                    },
-                    body = if (query.length >= 2) {
-                        stringResource(R.string.search_screen_subtitle)
-                    } else {
-                        stringResource(R.string.search_type_to_search)
-                    },
-                    modifier = Modifier.widthIn(min = 220.dp, max = 360.dp)
-                )
             }
 
             SearchInput(
@@ -900,7 +917,7 @@ private fun SearchHeroPanel(
                 }
             }
 
-            if (recentQueries.isNotEmpty()) {
+            if (recentQueries.isNotEmpty() && (!compactLayout || query.isBlank())) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(14.dp),

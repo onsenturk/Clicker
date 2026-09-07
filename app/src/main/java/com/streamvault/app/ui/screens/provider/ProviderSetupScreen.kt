@@ -14,6 +14,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
 import com.streamvault.app.ui.interaction.mouseClickable
@@ -73,8 +74,6 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.tv.material3.*
 import com.streamvault.app.R
 import com.streamvault.app.device.rememberIsTelevisionDevice
-import com.streamvault.app.pairing.ProviderQrPairingState
-import com.streamvault.app.pairing.ProviderQrPairingStatus
 import com.streamvault.app.ui.components.dialogs.PremiumDialog
 import com.streamvault.app.ui.components.dialogs.PremiumDialogFooterButton
 import com.streamvault.app.ui.components.extractProgressFraction
@@ -249,7 +248,6 @@ fun ProviderSetupScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val knownLocalM3uUrls by viewModel.knownLocalM3uUrls.collectAsStateWithLifecycle()
-    val pairingState by viewModel.pairingState.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
 
@@ -358,12 +356,6 @@ fun ProviderSetupScreen(
 
     LaunchedEffect(uiState.backupImportSuccess) {
         if (uiState.backupImportSuccess) {
-            onProviderAdded()
-        }
-    }
-    LaunchedEffect(pairingState.status) {
-        if (pairingState.status == ProviderQrPairingStatus.COMPLETE) {
-            delay(1200)
             onProviderAdded()
         }
     }
@@ -550,7 +542,6 @@ fun ProviderSetupScreen(
                     ProviderFormContent(
                         sourceType = sourceType,
                         uiState = uiState,
-                        pairingState = pairingState,
                         name = name, onNameChange = { name = ProviderInputSanitizer.sanitizeProviderNameForEditing(it) },
                         serverUrl = serverUrl, onServerUrlChange = { serverUrl = ProviderInputSanitizer.sanitizeUrlForEditing(it) },
                         username = username, onUsernameChange = { username = ProviderInputSanitizer.sanitizeUsernameForEditing(it) },
@@ -588,8 +579,6 @@ fun ProviderSetupScreen(
                         onLoginJellyfin = { viewModel.loginJellyfin(serverUrl, username, password, name) },
                         quickConnectCode = uiState.jellyfinQuickConnectCode,
                         onQuickConnectRequest = { viewModel.loginJellyfinQuickConnect(serverUrl.trim(), name.trim()) },
-                        onStartPhonePairing = viewModel::startPhonePairing,
-                        onStopPhonePairing = viewModel::stopPhonePairing,
                         onToggleM3uVodClassification = { viewModel.updateM3uVodClassificationEnabled(!uiState.m3uVodClassificationEnabled) },
                         onSelectEpgSyncMode = viewModel::updateEpgSyncMode,
                         onSelectStalkerCatalogMode = viewModel::updateStalkerCatalogMode,
@@ -615,7 +604,6 @@ fun ProviderSetupScreen(
                     ProviderFormContent(
                         sourceType = sourceType,
                         uiState = uiState,
-                        pairingState = pairingState,
                         name = name, onNameChange = { name = ProviderInputSanitizer.sanitizeProviderNameForEditing(it) },
                         serverUrl = serverUrl, onServerUrlChange = { serverUrl = ProviderInputSanitizer.sanitizeUrlForEditing(it) },
                         username = username, onUsernameChange = { username = ProviderInputSanitizer.sanitizeUsernameForEditing(it) },
@@ -653,8 +641,6 @@ fun ProviderSetupScreen(
                         onLoginJellyfin = { viewModel.loginJellyfin(serverUrl, username, password, name) },
                         quickConnectCode = uiState.jellyfinQuickConnectCode,
                         onQuickConnectRequest = { viewModel.loginJellyfinQuickConnect(serverUrl.trim(), name.trim()) },
-                        onStartPhonePairing = viewModel::startPhonePairing,
-                        onStopPhonePairing = viewModel::stopPhonePairing,
                         onToggleM3uVodClassification = { viewModel.updateM3uVodClassificationEnabled(!uiState.m3uVodClassificationEnabled) },
                         onSelectEpgSyncMode = viewModel::updateEpgSyncMode,
                         onSelectStalkerCatalogMode = viewModel::updateStalkerCatalogMode,
@@ -907,130 +893,11 @@ private suspend fun Lifecycle.awaitResumed() {
     }
 }
 
-@Composable
-private fun PhonePairingCard(
-    pairingState: ProviderQrPairingState,
-    onStart: () -> Unit,
-    onStop: () -> Unit
-) {
-    val isActive = pairingState.status == ProviderQrPairingStatus.READY ||
-        pairingState.status == ProviderQrPairingStatus.RECEIVING
-    val message = pairingState.message ?: stringResource(R.string.setup_phone_pairing_body)
-
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = SurfaceDefaults.colors(containerColor = Surface.copy(alpha = 0.72f)),
-        border = Border(
-            border = BorderStroke(
-                1.dp,
-                if (isActive) Primary.copy(alpha = 0.55f) else SurfaceHighlight
-            ),
-            shape = RoundedCornerShape(16.dp)
-        )
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text(
-                        text = stringResource(R.string.setup_phone_pairing_title),
-                        style = MaterialTheme.typography.titleMedium,
-                        color = OnBackground
-                    )
-                    Text(
-                        text = message,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = OnSurfaceDim
-                    )
-                }
-                StatusPill(
-                    label = when (pairingState.status) {
-                        ProviderQrPairingStatus.IDLE -> stringResource(R.string.setup_phone_pairing_idle)
-                        ProviderQrPairingStatus.READY -> stringResource(R.string.setup_phone_pairing_ready)
-                        ProviderQrPairingStatus.RECEIVING -> stringResource(R.string.setup_phone_pairing_receiving)
-                        ProviderQrPairingStatus.COMPLETE -> stringResource(R.string.setup_phone_pairing_complete)
-                        ProviderQrPairingStatus.ERROR -> stringResource(R.string.setup_phone_pairing_error)
-                    },
-                    containerColor = if (pairingState.status == ProviderQrPairingStatus.ERROR) {
-                        ErrorColor.copy(alpha = 0.35f)
-                    } else {
-                        PrimaryGlow
-                    }
-                )
-            }
-
-            pairingState.qrBitmap?.let { bitmap ->
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Image(
-                        bitmap = bitmap.asImageBitmap(),
-                        contentDescription = stringResource(R.string.setup_phone_pairing_qr_description),
-                        modifier = Modifier
-                            .size(156.dp)
-                            .background(Color.White, RoundedCornerShape(12.dp))
-                            .padding(8.dp)
-                    )
-                    Column(
-                        modifier = Modifier.weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Text(
-                            text = stringResource(R.string.setup_phone_pairing_same_wifi),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = OnBackground
-                        )
-                        pairingState.url?.let { url ->
-                            Text(
-                                text = url,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = Primary,
-                                maxLines = 3
-                            )
-                        }
-                    }
-                }
-            }
-
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                Box(modifier = Modifier.weight(1f)) {
-                    SmallActionButton(
-                        text = if (isActive) {
-                            stringResource(R.string.setup_phone_pairing_restart)
-                        } else {
-                            stringResource(R.string.setup_phone_pairing_start)
-                        },
-                        onClick = onStart
-                    )
-                }
-                if (isActive) {
-                    Box(modifier = Modifier.weight(1f)) {
-                        SmallActionButton(
-                            text = stringResource(R.string.setup_phone_pairing_stop),
-                            onClick = onStop
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun ProviderFormContent(
     sourceType: SourceType,
     uiState: ProviderSetupState,
-    pairingState: ProviderQrPairingState,
     name: String, onNameChange: (String) -> Unit,
     serverUrl: String, onServerUrlChange: (String) -> Unit,
     username: String, onUsernameChange: (String) -> Unit,
@@ -1068,8 +935,6 @@ private fun ProviderFormContent(
     onLoginJellyfin: () -> Unit,
     quickConnectCode: String,
     onQuickConnectRequest: () -> Unit,
-    onStartPhonePairing: () -> Unit,
-    onStopPhonePairing: () -> Unit,
     onToggleM3uVodClassification: () -> Unit,
     onSelectEpgSyncMode: (ProviderEpgSyncMode) -> Unit,
     onSelectStalkerCatalogMode: (StalkerCatalogMode) -> Unit,
@@ -1103,14 +968,6 @@ private fun ProviderFormContent(
                 onValueChange = onNameChange,
                 placeholder = androidx.compose.ui.res.stringResource(R.string.setup_name_hint)
             )
-
-            if (!uiState.isEditing) {
-                PhonePairingCard(
-                    pairingState = pairingState,
-                    onStart = onStartPhonePairing,
-                    onStop = onStopPhonePairing
-                )
-            }
 
             HorizontalDivider(color = SurfaceHighlight.copy(alpha = 0.6f))
 
@@ -2557,7 +2414,7 @@ private fun SourceTypeSelectorPanel(
         colors = SurfaceDefaults.colors(containerColor = Surface.copy(alpha = 0.92f))
     ) {
         Column(
-            modifier = Modifier.fillMaxSize().padding(14.dp),
+            modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(14.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Text(
@@ -2629,7 +2486,7 @@ private fun SourceTypeSelectorPanel(
                     modifier = Modifier.fillMaxWidth()
                 )
             }
-            Spacer(modifier = Modifier.weight(1f))
+            Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = androidx.compose.ui.res.stringResource(R.string.setup_info_manage_title),
                 style = MaterialTheme.typography.bodySmall,
@@ -2704,7 +2561,7 @@ private fun SourceTypeTabRow(
     onSelect: (SourceType) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Row(modifier = modifier, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    Row(modifier = modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         if (!isEditing || sourceType == SourceType.XTREAM) {
             TabButton(
                 text = androidx.compose.ui.res.stringResource(R.string.setup_xtream),
@@ -2874,6 +2731,7 @@ private fun ProviderTextField(
     Box(
         modifier = modifier
             .fillMaxWidth()
+            .semantics { contentDescription = placeholder }
             .focusRequester(containerFocusRequester)
             .bringIntoViewRequester(bringIntoViewRequester)
             .onFocusEvent {

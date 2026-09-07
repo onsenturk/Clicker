@@ -1,6 +1,7 @@
 package com.streamvault.data.parser
 
 import com.google.common.truth.Truth.assertThat
+import com.streamvault.domain.model.Program
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
@@ -244,6 +245,47 @@ class XmltvParserTest {
     }
 
     // ── Defensive / error handling ────────────────────────────────
+
+    @Test
+    fun `allParserModes_skipMissingOrBlankRequiredFields_andContinue`() = runTest {
+        val xml = """
+            <tv>
+              <channel><display-name>Missing ID</display-name></channel>
+              <channel id="missing-name" />
+              <channel id="ch1"><display-name>Valid Channel</display-name></channel>
+              <programme start="20250101120000 +0000" stop="20250101130000 +0000">
+                <title>Missing Channel</title>
+              </programme>
+              <programme channel=" " start="20250101120000 +0000" stop="20250101130000 +0000">
+                <title>Blank Channel</title>
+              </programme>
+              <programme channel="ch1" start="20250101120000 +0000" stop="20250101130000 +0000" />
+              <programme channel="ch1" start="20250101120000 +0000" stop="20250101130000 +0000">
+                <title> </title>
+              </programme>
+              <programme channel="ch1" start="20250101120000 +0000" stop="20250101130000 +0000">
+                <title>Valid Programme</title>
+              </programme>
+            </tv>
+        """.trimIndent()
+
+        val programs = parser.parse(xml.byteInputStream())
+        val streamedPrograms = mutableListOf<Program>()
+        parser.parseStreaming(xml.byteInputStream(), onProgram = { streamedPrograms.add(it) })
+        val channels = mutableListOf<XmltvChannel>()
+        val programmes = mutableListOf<XmltvProgramme>()
+        parser.parseStreamingWithChannels(
+            xml.byteInputStream(),
+            onChannel = { channels.add(it) },
+            onProgramme = { programmes.add(it) }
+        )
+
+        assertThat(programs.map { it.title }).containsExactly("Valid Programme")
+        assertThat(streamedPrograms).containsExactlyElementsIn(programs)
+        assertThat(channels).containsExactly(XmltvChannel("ch1", "Valid Channel"))
+        assertThat(programmes.map { it.title }).containsExactly("Valid Programme")
+        assertThat(programmes.single().channelId).isEqualTo("ch1")
+    }
 
     @Test
     fun `parse_missingTitle_skipsProgram`() {

@@ -6,12 +6,18 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
-import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performKeyInput
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.pressKey
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.streamvault.app.ui.components.shell.CategoryRailPanel
 import com.streamvault.app.ui.screens.player.overlay.PlayerControlsOverlay
@@ -24,13 +30,14 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
+@OptIn(ExperimentalTestApi::class)
 class PlayerSmokeTest {
 
     @get:Rule
     val composeRule = createComposeRule()
 
     @Test
-    fun categoryRailPanel_searchField_acceptsInitialFocusAndInput() {
+    fun categoryRailPanel_searchField_acceptsFocusSelectionAndInput() {
         val searchFocusRequester = FocusRequester()
 
         composeRule.setContent {
@@ -51,6 +58,9 @@ class PlayerSmokeTest {
             }
         }
 
+        composeRule.onNodeWithContentDescription("Search categories", useUnmergedTree = true)
+            .assertIsFocused()
+            .performKeyInput { pressKey(Key.DirectionCenter) }
         composeRule.onNode(hasSetTextAction()).assertIsFocused()
         composeRule.onNode(hasSetTextAction()).performTextInput("Sports")
         composeRule.onNodeWithText("Sports").assertExists()
@@ -104,7 +114,7 @@ class PlayerSmokeTest {
             }
         }
 
-        composeRule.onNodeWithText(">").assertIsFocused()
+        composeRule.onNodeWithContentDescription("Play").assertIsFocused()
     }
 
     @Test
@@ -173,7 +183,10 @@ class PlayerSmokeTest {
             }
         }
 
-        composeRule.onNodeWithText("Spanish Stereo").performClick()
+        composeRule.onNodeWithText("Spanish Stereo")
+            .performSemanticsAction(SemanticsActions.RequestFocus) { requestFocus -> requestFocus() }
+            .assertIsFocused()
+            .performKeyInput { pressKey(Key.DirectionCenter) }
         composeRule.runOnIdle {
             check(selectedTrackId == "audio-es")
         }

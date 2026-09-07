@@ -52,6 +52,29 @@ class StreamVaultDatabaseMigrationTest {
     }
 
     @Test
+    fun migrate77To78_matchesSeriesBrowseSortDirections() {
+        val databaseName = "streamvault-series-browse-77-78"
+        migrationTestHelper.createDatabase(databaseName, 77).close()
+        val migrated = migrationTestHelper.runMigrationsAndValidate(
+            databaseName,
+            78,
+            true,
+            StreamVaultDatabase.MIGRATION_77_78
+        )
+        val descendingColumns = mutableListOf<Int>()
+        migrated.query("PRAGMA index_xinfo('index_series_provider_id_last_modified_name_id')").use { cursor ->
+            while (cursor.moveToNext()) {
+                if (cursor.getInt(cursor.getColumnIndexOrThrow("key")) == 1) {
+                    descendingColumns += cursor.getInt(cursor.getColumnIndexOrThrow("desc"))
+                }
+            }
+        }
+        assertEquals(listOf(0, 1, 0, 0), descendingColumns)
+        assertEquals(0, countRows(migrated, "SELECT COUNT(*) FROM pragma_foreign_key_check"))
+        migrated.close()
+    }
+
+    @Test
     fun migrate9To10_createsBackfillsAndMaintainsFtsTables() {
         migrationTestHelper.createDatabase(testDbName, 9).apply {
             execSQL(

@@ -8,7 +8,9 @@ import com.streamvault.data.local.dao.MovieDao
 import com.streamvault.data.local.dao.PlaybackHistoryDao
 import com.streamvault.data.local.entity.MovieEntity
 import com.streamvault.data.local.entity.PlaybackHistoryEntity
+import com.streamvault.data.local.entity.ProviderEntity
 import com.streamvault.domain.model.ContentType
+import com.streamvault.domain.model.ProviderType
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Before
@@ -41,6 +43,7 @@ class MovieDaoTest {
 
     @Test
     fun testRestoreWatchProgress() = runTest {
+        insertProvider(1L)
         // 1. Insert history for a movie. Use contentId = 1L
         val history = PlaybackHistoryEntity(
             contentId = 1L,
@@ -68,6 +71,7 @@ class MovieDaoTest {
 
     @Test
     fun syncAllWatchProgressFromHistory_clearsStaleMovieProgressWithoutHistory() = runTest {
+        insertProvider(3L)
         movieDao.insertAll(
             listOf(
                 MovieEntity(
@@ -90,10 +94,13 @@ class MovieDaoTest {
 
     @Test
     fun syncWatchProgressFromHistoryByProvider_updatesMatchingMoviesAndClearsStaleRows() = runTest {
+        insertProvider(3L)
+        insertProvider(4L)
         movieDao.insertAll(
             listOf(
                 MovieEntity(
                     id = 7L,
+                    streamId = 7L,
                     name = "Watched Movie",
                     providerId = 3L,
                     watchProgress = 0L,
@@ -101,6 +108,7 @@ class MovieDaoTest {
                 ),
                 MovieEntity(
                     id = 8L,
+                    streamId = 8L,
                     name = "Stale Movie",
                     providerId = 3L,
                     watchProgress = 9_000L,
@@ -108,6 +116,7 @@ class MovieDaoTest {
                 ),
                 MovieEntity(
                     id = 9L,
+                    streamId = 9L,
                     name = "Other Provider",
                     providerId = 4L,
                     watchProgress = 4_000L,
@@ -138,5 +147,9 @@ class MovieDaoTest {
         assertThat(staleMovie?.lastWatchedAt).isEqualTo(0L)
         assertThat(otherProviderMovie?.watchProgress).isEqualTo(4_000L)
         assertThat(otherProviderMovie?.lastWatchedAt).isEqualTo(5_000L)
+    }
+
+    private suspend fun insertProvider(id: Long) {
+        db.providerDao().insert(ProviderEntity(id = id, name = "Provider $id", type = ProviderType.XTREAM_CODES))
     }
 }

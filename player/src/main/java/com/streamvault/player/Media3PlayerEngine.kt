@@ -171,6 +171,10 @@ class Media3PlayerEngine @Inject constructor(
         private set
     private var isDisposed = false
     private var exoPlayer: ExoPlayer? = null
+    private val videoFrameMetadataListener = androidx.media3.exoplayer.video.VideoFrameMetadataListener {
+            presentationTimeUs, _, _, _ ->
+        videoStallDetector.onVideoFrameRendered((presentationTimeUs / 1_000L).coerceAtLeast(0L))
+    }
     private var mediaSession: MediaSession? = null
     private var requestedAudioDecoderMode: DecoderMode = DecoderMode.AUTO
     private var requestedVideoDecoderMode: DecoderMode = DecoderMode.AUTO
@@ -753,6 +757,7 @@ class Media3PlayerEngine @Inject constructor(
     }
 
     override fun setLiveAudioTap(tap: LiveAudioTap?) {
+        if (ensureNotDisposed("setLiveAudioTap")) return
         liveAudioTap = tap
     }
 
@@ -861,6 +866,7 @@ class Media3PlayerEngine @Inject constructor(
     override fun release() {
         if (isDisposed) return
         isDisposed = true
+        liveAudioTap = null
         liveTimeshiftManager.detachComponentCallbacks()
         resetEngineState(restartCollectors = false)
     }
@@ -882,7 +888,7 @@ class Media3PlayerEngine @Inject constructor(
         mediaSession?.release()
         mediaSession = null
         viewBinder.clear()
-        exoPlayer?.release()
+        exoPlayer?.let(::releasePlayer)
         exoPlayer = null
         lastStreamInfo = null
         lastMediaId = null
@@ -1141,10 +1147,16 @@ class Media3PlayerEngine @Inject constructor(
         val existing = exoPlayer ?: return
         mediaSession?.release()
         mediaSession = null
-        existing.release()
+        releasePlayer(existing)
         exoPlayer = null
         viewBinder.attachPlayer(null)
         // The caller (prepareInternal) will create a fresh player and set it up fully.
+    }
+
+    private fun releasePlayer(player: ExoPlayer) {
+        player.clearVideoFrameMetadataListener(videoFrameMetadataListener)
+        player.stop()
+        player.release()
     }
 
     private fun getOrCreatePlayer(): ExoPlayer {
@@ -1203,9 +1215,7 @@ class Media3PlayerEngine @Inject constructor(
             .apply {
                 videoScalingMode = C.VIDEO_SCALING_MODE_SCALE_TO_FIT
                 playbackParameters = PlaybackParameters(_playbackSpeed.value)
-                setVideoFrameMetadataListener { presentationTimeUs, _, _, _ ->
-                    videoStallDetector.onVideoFrameRendered((presentationTimeUs / 1_000L).coerceAtLeast(0L))
-                }
+                setVideoFrameMetadataListener(videoFrameMetadataListener)
                 addAnalyticsListener(createAnalyticsListener())
                 addListener(createPlayerListener())
             }
@@ -1292,6 +1302,7 @@ class Media3PlayerEngine @Inject constructor(
                 eventListener: AudioRendererEventListener,
                 out: ArrayList<Renderer>
             ) {
+                val firstAudioRenderer = out.size
                 super.buildAudioRenderers(
                     context,
                     rendererPlan.audioExtensionRendererMode.toMedia3ExtensionRendererMode(),
@@ -1302,6 +1313,9 @@ class Media3PlayerEngine @Inject constructor(
                     eventListener,
                     out
                 )
+                for (index in firstAudioRenderer until out.size) {
+                    out[index] = com.streamvault.player.playback.AudioSinkOwningRenderer(out[index], audioSink)
+                }
             }
 
             override fun buildVideoRenderers(

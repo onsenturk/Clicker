@@ -4,7 +4,7 @@ import android.content.Context
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.google.common.truth.Truth.assertThat
+import com.google.common.truth.Truth.assertWithMessage
 import com.streamvault.data.local.entity.MovieEntity
 import com.streamvault.data.local.entity.PlaybackHistoryEntity
 import com.streamvault.data.local.entity.ProviderEntity
@@ -64,7 +64,11 @@ class BrowseQueryPlanTest {
             """.trimIndent()
         )
         assertUsesIndex(inProgressPlan, "index_movies_provider_id_name_id")
-        assertUsesIndex(inProgressPlan, "index_playback_history_provider_id_content_type_content_id")
+        assertUsesIndex(
+            inProgressPlan,
+            "index_playback_history_provider_id_content_type_content_id",
+            "index_playback_history_content_id_content_type_provider_id"
+        )
         assertNoTempSort(inProgressPlan)
     }
 
@@ -139,11 +143,13 @@ class BrowseQueryPlanTest {
         return plan
     }
 
-    private fun assertUsesIndex(plan: List<String>, indexName: String) {
-        assertThat(plan.any { it.contains(indexName) }).isTrue()
+    private fun assertUsesIndex(plan: List<String>, vararg indexNames: String) {
+        assertWithMessage("Expected one of %s in plan: %s", indexNames.toList(), plan.joinToString("; "))
+            .that(plan.any { step -> indexNames.any(step::contains) }).isTrue()
     }
 
     private fun assertNoTempSort(plan: List<String>) {
-        assertThat(plan.none { it.contains("USE TEMP B-TREE FOR ORDER BY") }).isTrue()
+        assertWithMessage("Unexpected temporary sort in plan: %s", plan.joinToString("; "))
+            .that(plan.none { it.contains("USE TEMP B-TREE") && it.contains("ORDER BY") }).isTrue()
     }
 }

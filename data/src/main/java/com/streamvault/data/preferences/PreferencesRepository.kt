@@ -286,6 +286,8 @@ class PreferencesRepository @Inject constructor(
         val LAST_APP_UPDATE_OUTCOME = stringPreferencesKey("last_app_update_outcome")
         val APP_UPDATE_DOWNLOAD_ID = longPreferencesKey("app_update_download_id")
         val APP_UPDATE_DOWNLOAD_VERSION_NAME = stringPreferencesKey("app_update_download_version_name")
+        val APP_UPDATE_ARTIFACT_VERSION_NAME = stringPreferencesKey("app_update_artifact_version_name")
+        val APP_UPDATE_ARTIFACT_SHA256 = stringPreferencesKey("app_update_artifact_sha256")
         val APP_UPDATE_DOWNLOADED_VERSION_NAME = stringPreferencesKey("app_update_downloaded_version_name")
         val APP_UPDATE_LATEST_VERSION_NAME = stringPreferencesKey("app_update_latest_version_name")
         val APP_UPDATE_LATEST_VERSION_CODE = intPreferencesKey("app_update_latest_version_code")
@@ -714,6 +716,13 @@ class PreferencesRepository @Inject constructor(
         preferences[PreferencesKeys.APP_UPDATE_DOWNLOADED_VERSION_NAME]?.takeIf { it.isNotBlank() }
     }
 
+    val appUpdateArtifactMetadata: Flow<AppUpdateArtifactMetadata?> = context.dataStore.data.map { preferences ->
+        val version = preferences[PreferencesKeys.APP_UPDATE_ARTIFACT_VERSION_NAME]
+        val checksum = preferences[PreferencesKeys.APP_UPDATE_ARTIFACT_SHA256]
+        if (version.isNullOrBlank() || checksum.isNullOrBlank()) null
+        else AppUpdateArtifactMetadata(version, checksum)
+    }
+
     val cachedAppUpdateVersionName: Flow<String?> = context.dataStore.data.map { preferences ->
         preferences[PreferencesKeys.APP_UPDATE_LATEST_VERSION_NAME]?.takeIf { it.isNotBlank() }
     }
@@ -893,6 +902,19 @@ class PreferencesRepository @Inject constructor(
             } else {
                 preferences[PreferencesKeys.LAST_APP_UPDATE_OUTCOME] = outcome.take(256)
             }
+        }
+    }
+
+    suspend fun setAppUpdateDownloadMetadata(downloadId: Long, versionName: String, sha256: String) {
+        val checksum = sha256.trim().lowercase()
+        require(downloadId > 0 && versionName.isNotBlank())
+        require(checksum.matches(Regex("^[a-f0-9]{64}$")))
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.APP_UPDATE_DOWNLOAD_ID] = downloadId
+            preferences[PreferencesKeys.APP_UPDATE_DOWNLOAD_VERSION_NAME] = versionName
+            preferences[PreferencesKeys.APP_UPDATE_ARTIFACT_VERSION_NAME] = versionName
+            preferences[PreferencesKeys.APP_UPDATE_ARTIFACT_SHA256] = checksum
+            preferences.remove(PreferencesKeys.APP_UPDATE_DOWNLOADED_VERSION_NAME)
         }
     }
 

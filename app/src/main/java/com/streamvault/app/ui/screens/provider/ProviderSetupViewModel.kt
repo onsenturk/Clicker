@@ -2,8 +2,6 @@ package com.streamvault.app.ui.screens.provider
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.streamvault.app.pairing.ProviderQrPairingManager
-import com.streamvault.app.pairing.ProviderQrPairingState
 import com.streamvault.data.remote.xtream.XtreamAuthenticationException
 import com.streamvault.data.remote.xtream.XtreamNetworkException
 import com.streamvault.data.remote.xtream.XtreamParsingException
@@ -69,7 +67,6 @@ class ProviderSetupViewModel @Inject constructor(
     private val validateAndAddProvider: ValidateAndAddProvider,
     private val importBackup: ImportBackup,
     private val driveBackupSyncManager: DriveBackupSyncManager,
-    private val providerQrPairingManager: ProviderQrPairingManager,
 ) : ViewModel() {
 
     enum class OnboardingCompletion {
@@ -89,7 +86,6 @@ class ProviderSetupViewModel @Inject constructor(
     val uiState: StateFlow<ProviderSetupState> = _uiState.asStateFlow()
     private val _knownLocalM3uUrls = MutableStateFlow<Set<String>>(emptySet())
     val knownLocalM3uUrls: StateFlow<Set<String>> = _knownLocalM3uUrls.asStateFlow()
-    val pairingState: StateFlow<ProviderQrPairingState> = providerQrPairingManager.state
     private var jellyfinQuickConnectJob: kotlinx.coroutines.Job? = null
     private var stalkerSetupJob: kotlinx.coroutines.Job? = null
     private var pendingStalkerCommand: StalkerProviderSetupCommand? = null
@@ -134,18 +130,6 @@ class ProviderSetupViewModel @Inject constructor(
                 }
                 is DomainResult.Loading -> Unit
             }
-        }
-    }
-
-    fun startPhonePairing() {
-        viewModelScope.launch {
-            providerQrPairingManager.startPairing()
-        }
-    }
-
-    fun stopPhonePairing() {
-        viewModelScope.launch {
-            providerQrPairingManager.stopPairing()
         }
     }
 

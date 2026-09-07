@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <paths>
-    <external-files-path
-        name="apk_downloads"
-        path="Download/" />
+    <cache-path
+        name="verified_updates"
+        path="verified_updates/" />
     <external-files-path
         name="backup_exports"
         path="Documents/Backups/" />

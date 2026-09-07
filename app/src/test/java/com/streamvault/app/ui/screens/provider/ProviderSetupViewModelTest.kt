@@ -1,8 +1,6 @@
 package com.streamvault.app.ui.screens.provider
 
 import com.google.common.truth.Truth.assertThat
-import com.streamvault.app.pairing.ProviderQrPairingManager
-import com.streamvault.app.pairing.ProviderQrPairingState
 import com.streamvault.domain.model.ActiveLiveSource
 import com.streamvault.domain.model.CombinedM3uProfile
 import com.streamvault.domain.model.LegacyProvider as Provider
@@ -55,7 +53,6 @@ class ProviderSetupViewModelTest {
     private val validateAndAddProvider: ValidateAndAddProvider = mock()
     private val importBackup: ImportBackup = mock()
     private val driveBackupSyncManager: DriveBackupSyncManager = mock()
-    private val providerQrPairingManager: ProviderQrPairingManager = mock()
     private val testDispatcher = StandardTestDispatcher()
 
     @Before
@@ -65,7 +62,6 @@ class ProviderSetupViewModelTest {
         whenever(providerRepository.getProviders()).thenReturn(flowOf(emptyList()))
         whenever(combinedM3uRepository.getActiveLiveSource()).thenReturn(flowOf(null))
         whenever(driveBackupSyncManager.authState).thenReturn(flowOf(DriveAuthState.SignedOut))
-        whenever(providerQrPairingManager.state).thenReturn(MutableStateFlow(ProviderQrPairingState()))
     }
 
     @After
@@ -98,7 +94,6 @@ class ProviderSetupViewModelTest {
             validateAndAddProvider = validateAndAddProvider,
             importBackup = importBackup,
             driveBackupSyncManager = driveBackupSyncManager,
-            providerQrPairingManager = providerQrPairingManager,
         )
 
         viewModel.addM3u("https://example.com/list.m3u", "Playlist 7", "", "")
@@ -133,7 +128,6 @@ class ProviderSetupViewModelTest {
             validateAndAddProvider = validateAndAddProvider,
             importBackup = importBackup,
             driveBackupSyncManager = driveBackupSyncManager,
-            providerQrPairingManager = providerQrPairingManager,
         )
 
         viewModel.loginXtream("https://example.com", "alice", "secret", "Premium", "", "")
@@ -166,7 +160,6 @@ class ProviderSetupViewModelTest {
             validateAndAddProvider = validateAndAddProvider,
             importBackup = importBackup,
             driveBackupSyncManager = driveBackupSyncManager,
-            providerQrPairingManager = providerQrPairingManager,
         )
         val field = ProviderSetupViewModel::class.java.getDeclaredField("_uiState").apply { isAccessible = true }
         @Suppress("UNCHECKED_CAST")
@@ -201,7 +194,6 @@ class ProviderSetupViewModelTest {
             validateAndAddProvider = validateAndAddProvider,
             importBackup = importBackup,
             driveBackupSyncManager = driveBackupSyncManager,
-            providerQrPairingManager = providerQrPairingManager,
         )
         val credentials = listOf(
             ProviderCredentials(
@@ -240,7 +232,6 @@ class ProviderSetupViewModelTest {
             validateAndAddProvider = validateAndAddProvider,
             importBackup = importBackup,
             driveBackupSyncManager = driveBackupSyncManager,
-            providerQrPairingManager = providerQrPairingManager,
         )
 
         viewModel.importBackupFromDrive()
@@ -259,7 +250,6 @@ class ProviderSetupViewModelTest {
             validateAndAddProvider = validateAndAddProvider,
             importBackup = importBackup,
             driveBackupSyncManager = driveBackupSyncManager,
-            providerQrPairingManager = providerQrPairingManager,
         )
 
         val seededState = viewModel.uiState.value.copy(
@@ -311,7 +301,6 @@ class ProviderSetupViewModelTest {
             validateAndAddProvider = validateAndAddProvider,
             importBackup = importBackup,
             driveBackupSyncManager = driveBackupSyncManager,
-            providerQrPairingManager = providerQrPairingManager,
         )
 
         viewModel.addM3u("https://example.com/list.m3u", "Playlist 7", "", "")
@@ -333,7 +322,6 @@ class ProviderSetupViewModelTest {
             validateAndAddProvider = validateAndAddProvider,
             importBackup = importBackup,
             driveBackupSyncManager = driveBackupSyncManager,
-            providerQrPairingManager = providerQrPairingManager,
         )
 
         viewModel.applySourceDefaults(ProviderSetupViewModel.SetupSourceType.STALKER)
@@ -351,7 +339,6 @@ class ProviderSetupViewModelTest {
             validateAndAddProvider = validateAndAddProvider,
             importBackup = importBackup,
             driveBackupSyncManager = driveBackupSyncManager,
-            providerQrPairingManager = providerQrPairingManager,
         )
 
         viewModel.applySourceDefaults(ProviderSetupViewModel.SetupSourceType.XTREAM)
@@ -369,7 +356,6 @@ class ProviderSetupViewModelTest {
             validateAndAddProvider = validateAndAddProvider,
             importBackup = importBackup,
             driveBackupSyncManager = driveBackupSyncManager,
-            providerQrPairingManager = providerQrPairingManager,
         )
 
         viewModel.applySourceDefaults(ProviderSetupViewModel.SetupSourceType.M3U)
@@ -387,7 +373,6 @@ class ProviderSetupViewModelTest {
             validateAndAddProvider = validateAndAddProvider,
             importBackup = importBackup,
             driveBackupSyncManager = driveBackupSyncManager,
-            providerQrPairingManager = providerQrPairingManager,
         )
 
         viewModel.updateEpgSyncMode(ProviderEpgSyncMode.SKIP)
@@ -420,7 +405,6 @@ class ProviderSetupViewModelTest {
             validateAndAddProvider = validateAndAddProvider,
             importBackup = importBackup,
             driveBackupSyncManager = driveBackupSyncManager,
-            providerQrPairingManager = providerQrPairingManager,
         )
 
         // Simulate being in edit mode for provider 7.
@@ -453,7 +437,6 @@ class ProviderSetupViewModelTest {
             validateAndAddProvider = validateAndAddProvider,
             importBackup = importBackup,
             driveBackupSyncManager = driveBackupSyncManager,
-            providerQrPairingManager = providerQrPairingManager,
         )
 
         viewModel.addM3u("https://example.com/list.m3u", "Playlist", "", "")
@@ -478,7 +461,6 @@ class ProviderSetupViewModelTest {
             validateAndAddProvider = validateAndAddProvider,
             importBackup = importBackup,
             driveBackupSyncManager = driveBackupSyncManager,
-            providerQrPairingManager = providerQrPairingManager,
         )
 
         viewModel.loginStalker(
@@ -525,7 +507,6 @@ class ProviderSetupViewModelTest {
             validateAndAddProvider = validateAndAddProvider,
             importBackup = importBackup,
             driveBackupSyncManager = driveBackupSyncManager,
-            providerQrPairingManager = providerQrPairingManager,
         )
 
         viewModel.loginStalker(
@@ -583,7 +564,6 @@ class ProviderSetupViewModelTest {
             validateAndAddProvider = validateAndAddProvider,
             importBackup = importBackup,
             driveBackupSyncManager = driveBackupSyncManager,
-            providerQrPairingManager = providerQrPairingManager,
         )
 
         viewModel.loginStalker(
@@ -627,7 +607,6 @@ class ProviderSetupViewModelTest {
             validateAndAddProvider = validateAndAddProvider,
             importBackup = importBackup,
             driveBackupSyncManager = driveBackupSyncManager,
-            providerQrPairingManager = providerQrPairingManager,
         )
 
         viewModel.loginStalker(

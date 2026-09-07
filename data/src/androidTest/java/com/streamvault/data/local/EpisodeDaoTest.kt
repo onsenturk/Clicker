@@ -9,7 +9,10 @@ import com.streamvault.data.local.dao.EpisodeDao
 import com.streamvault.data.local.dao.PlaybackHistoryDao
 import com.streamvault.data.local.entity.EpisodeEntity
 import com.streamvault.data.local.entity.PlaybackHistoryEntity
+import com.streamvault.data.local.entity.ProviderEntity
+import com.streamvault.data.local.entity.SeriesEntity
 import com.streamvault.domain.model.ContentType
+import com.streamvault.domain.model.ProviderType
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Before
@@ -41,6 +44,7 @@ class EpisodeDaoTest {
 
     @Test
     fun syncWatchProgressFromHistory_updatesEpisodeFromPlaybackHistory() = runTest {
+        insertSeries(providerId = 5L, seriesId = 91L)
         episodeDao.insertAll(
             listOf(
                 EpisodeEntity(
@@ -75,6 +79,8 @@ class EpisodeDaoTest {
 
     @Test
     fun syncWatchProgressFromHistoryByProvider_updatesMatchingEpisodesAndClearsStaleRows() = runTest {
+        insertSeries(providerId = 5L, seriesId = 91L)
+        insertSeries(providerId = 6L, seriesId = 101L)
         episodeDao.insertAll(
             listOf(
                 EpisodeEntity(
@@ -134,5 +140,14 @@ class EpisodeDaoTest {
         assertThat(staleEpisode?.lastWatchedAt).isEqualTo(0L)
         assertThat(otherProviderEpisode?.watchProgress).isEqualTo(3_000L)
         assertThat(otherProviderEpisode?.lastWatchedAt).isEqualTo(4_000L)
+    }
+
+    private suspend fun insertSeries(providerId: Long, seriesId: Long) {
+        db.providerDao().insert(
+            ProviderEntity(id = providerId, name = "Provider $providerId", type = ProviderType.XTREAM_CODES)
+        )
+        db.seriesDao().insertAll(
+            listOf(SeriesEntity(id = seriesId, seriesId = seriesId, name = "Series $seriesId", providerId = providerId))
+        )
     }
 }

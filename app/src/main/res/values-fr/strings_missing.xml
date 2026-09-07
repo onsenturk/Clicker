@@ -1,4 +1,4 @@
-<?xml version='1.0' encoding='utf-8'?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="nav_plugins">Plugins</string>
     <string name="welcome_setup_later">Set up later</string>
@@ -80,18 +80,6 @@
     <string name="settings_vod_http_protocol_compatibility">Compatibility (HTTP/1.1)</string>
     <string name="settings_vod_http_protocol_auto">Auto (HTTP/2 when supported)</string>
     <string name="settings_close_app">Close app</string>
-    <string name="setup_phone_pairing_title">Add from phone</string>
-    <string name="setup_phone_pairing_body">Scan a QR code and enter provider credentials from a phone on the same Wi-Fi.</string>
-    <string name="setup_phone_pairing_start">Show QR code</string>
-    <string name="setup_phone_pairing_restart">New QR code</string>
-    <string name="setup_phone_pairing_stop">Stop pairing</string>
-    <string name="setup_phone_pairing_same_wifi">Open this from a phone on the same Wi-Fi. Credentials are sent directly to this TV.</string>
-    <string name="setup_phone_pairing_qr_description">QR code for phone provider setup</string>
-    <string name="setup_phone_pairing_idle">Local only</string>
-    <string name="setup_phone_pairing_ready">Scan now</string>
-    <string name="setup_phone_pairing_receiving">Adding</string>
-    <string name="setup_phone_pairing_complete">Added</string>
-    <string name="setup_phone_pairing_error">Error</string>
     <string name="setup_tab_jellyfin">Jellyfin</string>
     <string name="setup_jellyfin_quick_connect">Quick Connect</string>
     <string name="setup_jellyfin_quick_connect_code">Code: %s</string>

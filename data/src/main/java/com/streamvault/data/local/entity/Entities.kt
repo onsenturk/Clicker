@@ -420,7 +420,11 @@ data class MovieBrowseEntity(
         Index(name = "index_series_provider_id_name_id", value = ["provider_id", "name", "id"]),
         Index(name = "index_series_provider_id_category_id_name_id", value = ["provider_id", "category_id", "name", "id"]),
         Index(name = "index_series_provider_id_rating_name_id", value = ["provider_id", "rating", "name", "id"]),
-        Index(name = "index_series_provider_id_last_modified_name_id", value = ["provider_id", "last_modified", "name", "id"])
+        Index(
+            name = "index_series_provider_id_last_modified_name_id",
+            value = ["provider_id", "last_modified", "name", "id"],
+            orders = [Index.Order.ASC, Index.Order.DESC, Index.Order.ASC, Index.Order.ASC]
+        )
     ]
 )
 data class SeriesEntity(

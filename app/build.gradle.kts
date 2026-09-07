@@ -1,7 +1,8 @@
 import java.util.Properties
-import java.io.FileInputStream
 import java.security.KeyStore
 import java.security.MessageDigest
+import org.gradle.api.provider.ValueSource
+import org.gradle.api.provider.ValueSourceParameters
 
 plugins {
     alias(libs.plugins.android.application)
@@ -13,41 +14,62 @@ plugins {
     alias(libs.plugins.kover)
 }
 
-val keystorePropertiesFile = rootProject.file("keystore.properties")
-val keystoreProperties = Properties()
-if (keystorePropertiesFile.exists()) {
-    FileInputStream(keystorePropertiesFile).use(keystoreProperties::load)
-}
-
-val localPropertiesFile = rootProject.file("local.properties")
-val localProperties = Properties()
-if (localPropertiesFile.exists()) {
-    FileInputStream(localPropertiesFile).use(localProperties::load)
-}
-
-fun localProp(key: String): String = localProperties.getProperty(key, "")
-
-fun computeOfficialSigningCertSha256(): String {
-    if (!keystorePropertiesFile.exists()) return ""
-
-    val storePath = keystoreProperties.getProperty("storeFile") ?: return ""
-    val storePassword = keystoreProperties.getProperty("storePassword") ?: return ""
-    val keyAlias = keystoreProperties.getProperty("keyAlias") ?: return ""
-    val storeFile = rootProject.file(storePath)
-    if (!storeFile.exists()) return ""
-
-    val keyStore = KeyStore.getInstance("JKS")
-    storeFile.inputStream().use { input ->
-        keyStore.load(input, storePassword.toCharArray())
+abstract class SigningCertificateSha256 : ValueSource<String, SigningCertificateSha256.Parameters> {
+    interface Parameters : ValueSourceParameters {
+        val storeFile: RegularFileProperty
+        val storePassword: Property<String>
+        val keyAlias: Property<String>
     }
 
-    val certificate = keyStore.getCertificate(keyAlias) ?: return ""
-    return MessageDigest.getInstance("SHA-256")
-        .digest(certificate.encoded)
-        .joinToString(":") { byte -> "%02X".format(byte) }
+    override fun obtain(): String {
+        val keyStore = KeyStore.getInstance("JKS")
+        parameters.storeFile.get().asFile.inputStream().use { input ->
+            keyStore.load(input, parameters.storePassword.get().toCharArray())
+        }
+        val certificate = requireNotNull(keyStore.getCertificate(parameters.keyAlias.get())) {
+            "The configured release signing alias has no certificate"
+        }
+        return MessageDigest.getInstance("SHA-256")
+            .digest(certificate.encoded)
+            .joinToString(":") { byte -> "%02X".format(byte) }
+    }
 }
 
-val officialSigningCertSha256 = computeOfficialSigningCertSha256()
+val keystorePropertiesText = providers.fileContents(
+    rootProject.layout.projectDirectory.file("keystore.properties")
+).asText
+val keystoreProperties = keystorePropertiesText.orElse("").map { text ->
+    Properties().apply { text.reader().use(::load) }
+}.get()
+val hasReleaseSigning = keystorePropertiesText.isPresent
+val localProperties = providers.fileContents(
+    rootProject.layout.projectDirectory.file("local.properties")
+).asText.orElse("").map { text ->
+    Properties().apply { text.reader().use(::load) }
+}
+
+fun localProp(key: String): String = localProperties.map { it.getProperty(key, "") }.get()
+
+val officialSigningCertSha256 = if (hasReleaseSigning) {
+    providers.of(SigningCertificateSha256::class) {
+        parameters.storeFile.set(rootProject.layout.projectDirectory.file(
+            requireNotNull(keystoreProperties.getProperty("storeFile")) { "Missing signing storeFile" }
+        ))
+        parameters.storePassword.set(
+            requireNotNull(keystoreProperties.getProperty("storePassword")) { "Missing signing storePassword" }
+        )
+        parameters.keyAlias.set(
+            requireNotNull(keystoreProperties.getProperty("keyAlias")) { "Missing signing keyAlias" }
+        )
+    }
+} else {
+    providers.provider { "" }
+}
+val buildTimestamp = providers.gradleProperty("buildTimestamp").map { value ->
+    requireNotNull(value.toLongOrNull()?.takeIf { it > 0 }) {
+        "buildTimestamp must be a positive UTC Unix timestamp in milliseconds"
+    }
+}.orElse(0L)
 
 android {
     namespace = "com.streamvault.app"
@@ -63,8 +85,21 @@ android {
         providers.gradleProperty("compatApi").orNull?.let { expectedApi ->
             testInstrumentationRunnerArguments["expected_api"] = expectedApi
         }
+        providers.gradleProperty("instrumentationTimeoutMs").orNull?.let { timeout ->
+            require(timeout.toLongOrNull()?.let { it > 0L } == true) {
+                "instrumentationTimeoutMs must be a positive duration in milliseconds"
+            }
+            testInstrumentationRunnerArguments["timeout_msec"] = timeout
+        }
+        providers.gradleProperty("instrumentationExcludedClasses").orNull?.let { excludedClasses ->
+            testInstrumentationRunnerArguments["notClass"] = excludedClasses
+        }
+        providers.gradleProperty("livePlaybackValidation").orNull?.let { enabled ->
+            require(enabled in setOf("true", "false")) { "livePlaybackValidation must be true or false" }
+            testInstrumentationRunnerArguments["livePlaybackValidation"] = enabled
+        }
         buildConfigField("String", "OFFICIAL_APPLICATION_ID", "\"com.streamvault.app\"")
-        buildConfigField("String", "OFFICIAL_SIGNING_CERT_SHA256", "\"$officialSigningCertSha256\"")
+        buildConfigField("String", "OFFICIAL_SIGNING_CERT_SHA256", "\"${officialSigningCertSha256.get()}\"")
         buildConfigField("String", "APP_UPDATE_CHANNEL", "\"stable\"")
         buildConfigField("long", "BUILD_TIMESTAMP_UTC", "0L")
         ndk {
@@ -86,7 +121,7 @@ android {
     }
 
     signingConfigs {
-        if (keystorePropertiesFile.exists()) {
+        if (hasReleaseSigning) {
             create("release") {
                 storeFile = rootProject.file(keystoreProperties.getProperty("storeFile"))
                 storePassword = keystoreProperties.getProperty("storePassword")
@@ -112,12 +147,12 @@ android {
             applicationIdSuffix = ".beta"
             versionNameSuffix = "-beta"
             buildConfigField("String", "APP_UPDATE_CHANNEL", "\"beta\"")
-            buildConfigField("long", "BUILD_TIMESTAMP_UTC", "${System.currentTimeMillis()}L")
+            buildConfigField("long", "BUILD_TIMESTAMP_UTC", "${buildTimestamp.get()}L")
             isDebuggable = false
             // Keep beta close to release behavior but faster for CI/test distribution.
             isMinifyEnabled = false
             isShrinkResources = false
-            if (keystorePropertiesFile.exists()) {
+            if (hasReleaseSigning) {
                 signingConfig = signingConfigs.getByName("release")
             }
             matchingFallbacks += listOf("release")
@@ -129,7 +164,7 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            if (keystorePropertiesFile.exists()) {
+            if (hasReleaseSigning) {
                 signingConfig = signingConfigs.getByName("release")
             }
             // Retains native symbol tables when an app bundle is produced. The
@@ -222,7 +257,6 @@ dependencies {
     implementation(libs.media3.exoplayer.rtsp)
     implementation(libs.media3.datasource.okhttp)
     implementation(libs.media3.ui)
-    implementation(files("../player/libs/media3-decoder-ffmpeg-1.9.2.aar"))
 
     // Room
     implementation(libs.room.runtime)
@@ -279,6 +313,7 @@ dependencies {
     androidTestImplementation(libs.androidx.test.ext.junit)
     androidTestImplementation(libs.espresso.core)
     androidTestImplementation(libs.truth)
+    androidTestImplementation(libs.leakcanary.instrumentation)
 }
 
 tasks.configureEach {

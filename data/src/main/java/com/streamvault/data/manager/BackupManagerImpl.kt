@@ -3393,13 +3393,14 @@ class BackupManagerImpl @Inject constructor(
             !portable.guideDefaultCategorySpecified ->
                 preferencesRepository.clearGuideDefaultCategoryId()
         }
+        val homeVirtualCategoryId = portable.homeDefaultVirtualCategoryId
+        val homeCategoryReference = portable.homeDefaultCategory
         when {
-            portable.homeDefaultVirtualCategoryId != null -> {
-                val virtualCategoryId = portable.homeDefaultVirtualCategoryId
-                preferencesRepository.setDefaultCategory(virtualCategoryId!!)
+            homeVirtualCategoryId != null -> {
+                preferencesRepository.setDefaultCategory(homeVirtualCategoryId)
             }
-            portable.homeDefaultCategory != null -> {
-                val reference = portable.homeDefaultCategory!!
+            homeCategoryReference != null -> {
+                val reference = homeCategoryReference
                 val provider = resolveProvider(reference.provider)
                 categories[provider?.id].orEmpty()
                     .resolvePortableCategoryId(reference)

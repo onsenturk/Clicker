@@ -1,4 +1,4 @@
-<?xml version='1.0' encoding='utf-8'?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="nav_plugins">الإضافات</string>
     <string name="welcome_setup_later">إعداد لاحقًا</string>
@@ -116,18 +116,6 @@
     <string name="settings_crash_report_deleted">تم حذف تقرير العطل.</string>
     <string name="settings_crash_report_delete_failed">تعذّر حذف تقرير العطل.</string>
     <string name="settings_catalog_count_indexing">جارٍ الفهرسة</string>
-    <string name="setup_phone_pairing_title">الإضافة من الهاتف</string>
-    <string name="setup_phone_pairing_body">امسح رمز QR وأدخل بيانات المزوّد من هاتف متصل بشبكة Wi-Fi نفسها.</string>
-    <string name="setup_phone_pairing_start">إظهار رمز QR</string>
-    <string name="setup_phone_pairing_restart">رمز QR جديد</string>
-    <string name="setup_phone_pairing_stop">إيقاف الإقران</string>
-    <string name="setup_phone_pairing_same_wifi">افتح هذا من هاتف متصل بشبكة Wi-Fi نفسها. تُرسَل بيانات الاعتماد مباشرةً إلى هذا التلفاز.</string>
-    <string name="setup_phone_pairing_qr_description">رمز QR لإعداد المزوّد عبر الهاتف</string>
-    <string name="setup_phone_pairing_idle">محلي فقط</string>
-    <string name="setup_phone_pairing_ready">امسح الآن</string>
-    <string name="setup_phone_pairing_receiving">جارٍ الإضافة</string>
-    <string name="setup_phone_pairing_complete">تمت الإضافة</string>
-    <string name="setup_phone_pairing_error">خطأ</string>
     <string name="setup_xtream_live_sync_mode_label">مزامنة البث المباشر في Xtream</string>
     <string name="setup_xtream_live_sync_mode_helper">اختر طريقة جلب قنوات البث المباشر. يحمي الوضع التلقائي الأجهزة الضعيفة والتحديثات الدورية مع إبقاء الفئات ممتلئة.</string>
     <string name="setup_xtream_live_sync_mode_auto_title">تلقائي</string>
