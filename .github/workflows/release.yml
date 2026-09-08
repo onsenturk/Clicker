@@ -184,8 +184,16 @@ jobs:
         uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
         with:
           tag_name: ${{ steps.app_version.outputs.release_tag }}
-          name: StreamVault ${{ steps.app_version.outputs.version_name }}
+          name: StreamVault by Onur ${{ steps.app_version.outputs.version_name }}
           body: |
+            StreamVault by Onur is an independent, non-commercial fork maintained by Onur (onsenturk).
+            Based on StreamVault, originally developed by David Nashash (Davidona). No upstream endorsement is implied.
+
+            - [Source for this build](https://github.com/${{ github.repository }}/tree/${{ github.sha }})
+            - [Original project](https://github.com/Davidona/StreamVault-IPTV)
+            - [Support the original developer](https://ko-fi.com/davidona)
+            - [StreamVault Source-Available License (Non-Commercial)](https://github.com/${{ github.repository }}/blob/${{ github.sha }}/LICENSE)
+
             ${{ steps.changelog.outputs.notes }}
             
             ---

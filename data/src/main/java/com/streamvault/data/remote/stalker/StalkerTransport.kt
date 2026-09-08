@@ -13,6 +13,8 @@ import java.security.SecureRandom
 import java.security.cert.CertificateException
 import java.security.cert.X509Certificate
 import java.util.Base64
+import java.util.Collections
+import java.util.IdentityHashMap
 import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
 import javax.net.ssl.SSLContext
@@ -310,9 +312,21 @@ internal fun X509Certificate.spkiSha256(): String =
         MessageDigest.getInstance("SHA-256").digest(publicKey.encoded)
     )
 
-internal fun Throwable.isTlsIdentityFailure(): Boolean =
-    generateSequence(this) { it.cause }.any { cause ->
-        cause is SSLHandshakeException ||
-            cause is SSLPeerUnverifiedException ||
-            cause is CertificateException
+internal fun Throwable.isTlsIdentityFailure(): Boolean {
+    val pending = ArrayDeque<Throwable>()
+    val visited = Collections.newSetFromMap(IdentityHashMap<Throwable, Boolean>())
+    pending.add(this)
+    while (pending.isNotEmpty()) {
+        val failure = pending.removeFirst()
+        if (!visited.add(failure)) continue
+        if (failure is SSLHandshakeException ||
+            failure is SSLPeerUnverifiedException ||
+            failure is CertificateException
+        ) {
+            return true
+        }
+        failure.cause?.let(pending::addLast)
+        failure.suppressed.forEach(pending::addLast)
     }
+    return false
+}

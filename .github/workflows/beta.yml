@@ -149,8 +149,16 @@ jobs:
         with:
           tag_name: ${{ steps.app_version.outputs.beta_tag }}
           target_commitish: ${{ github.sha }}
-          name: StreamVault Beta ${{ steps.app_version.outputs.version_name }} build ${{ steps.app_version.outputs.beta_sequence }}
+          name: StreamVault by Onur Beta ${{ steps.app_version.outputs.version_name }} build ${{ steps.app_version.outputs.beta_sequence }}
           body: |
+            StreamVault by Onur is an independent, non-commercial fork maintained by Onur (onsenturk).
+            Based on StreamVault, originally developed by David Nashash (Davidona). No upstream endorsement is implied.
+
+            - [Source for this build](https://github.com/${{ github.repository }}/tree/${{ github.sha }})
+            - [Original project](https://github.com/Davidona/StreamVault-IPTV)
+            - [Support the original developer](https://ko-fi.com/davidona)
+            - [StreamVault Source-Available License (Non-Commercial)](https://github.com/${{ github.repository }}/blob/${{ github.sha }}/LICENSE)
+
             Automated beta build from `develop`.
 
             Beta sequence: `${{ steps.app_version.outputs.beta_sequence }}`

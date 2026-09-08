@@ -18,6 +18,17 @@ dependencies {
     kover(project(":player"))
 }
 
+val okhttpJvmForUnitTests = "com.squareup.okhttp3:okhttp-jvm:${libs.versions.okhttp.get()}"
+subprojects {
+    configurations.matching {
+        it.name.endsWith("UnitTestCompileClasspath") || it.name.endsWith("UnitTestRuntimeClasspath")
+    }.configureEach {
+        resolutionStrategy.dependencySubstitution {
+            substitute(module("com.squareup.okhttp3:okhttp")).using(module(okhttpJvmForUnitTests))
+        }
+    }
+}
+
 // Ceilings for the accepted lint backlog, keyed by baseline file. `verifyLintBaseline`
 // fails if a baseline grows past its ceiling, so new warnings must be fixed rather than
 // baselined. When you burn issues down, lower the matching number here in the same commit.

@@ -92,7 +92,7 @@ try {
     if ($apiLevel -ge 35) {
         try {
             Invoke-AdbCheck -Arguments @(
-                'shell', 'am', 'compat', 'enable', 'FGS_INTRODUCE_TIME_LIMITS', 'com.streamvault.app.debug'
+                'shell', 'am', 'compat', 'enable', 'FGS_INTRODUCE_TIME_LIMITS', 'com.onsenturk.streamvault.debug'
             ) | Out-Host
             Invoke-AdbCheck -Arguments @(
                 'shell', 'device_config', 'put', 'activity_manager', 'data_sync_fgs_timeout_duration', '5000'
@@ -107,7 +107,7 @@ try {
                 'shell', 'device_config', 'delete', 'activity_manager', 'data_sync_fgs_timeout_duration'
             ) | Out-Host
             Invoke-AdbCheck -Arguments @(
-                'shell', 'am', 'compat', 'reset', 'FGS_INTRODUCE_TIME_LIMITS', 'com.streamvault.app.debug'
+                'shell', 'am', 'compat', 'reset', 'FGS_INTRODUCE_TIME_LIMITS', 'com.onsenturk.streamvault.debug'
             ) | Out-Host
         }
     } else {

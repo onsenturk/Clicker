@@ -1,5 +1,5 @@
 param(
-    [string]$PackageName = "com.streamvault.app"
+    [string]$PackageName = "com.onsenturk.streamvault"
 )
 
 $ErrorActionPreference = "Stop"

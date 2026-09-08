@@ -1,17 +1,26 @@
-# StreamVault
+# StreamVault by Onur
+
+**Based on StreamVault**, originally developed by **David Nashash (Davidona)**.
+This is an independent, non-commercial fork maintained by **Onur (onsenturk)**,
+not the original developer's official distribution.
+
+- Fork source and support: <https://github.com/onsenturk/StreamVault-IPTV>
+- Original project: <https://github.com/Davidona/StreamVault-IPTV>
+- Support the original developer: <https://ko-fi.com/davidona>
+- The original [non-commercial, share-alike license](LICENSE) continues to apply, including visible attribution, preserved links, and publicly available corresponding source when distributing changes.
 
 <p align="center">
-	<a href="https://github.com/Davidona/StreamVault-IPTV/releases/latest/download/StreamVault.apk"><img src="https://img.shields.io/badge/Download-StreamVault.apk-2ea44f?style=for-the-badge&logo=android" alt="Download StreamVault APK" /></a>
-	<a href="https://github.com/Davidona/StreamVault-IPTV/releases/latest"><img src="https://img.shields.io/github/v/release/Davidona/StreamVault-IPTV?display_name=tag&style=for-the-badge&color=0f766e" alt="Latest StreamVault release" /></a>
-	<a href="https://github.com/Davidona/StreamVault-IPTV/releases"><img src="https://img.shields.io/github/downloads/Davidona/StreamVault-IPTV/total?style=for-the-badge&color=8b5cf6" alt="Total Downloads" /></a>
-	<a href="https://discord.gg/eGPBMygcb"><img src="https://img.shields.io/badge/Discord-Join%20Server-5865F2?style=for-the-badge&logo=discord&logoColor=white" alt="Join the StreamVault Discord" /></a>
+	<a href="https://github.com/onsenturk/StreamVault-IPTV/releases"><img src="https://img.shields.io/badge/Releases-StreamVault_by_Onur-2ea44f?style=for-the-badge&logo=android" alt="StreamVault by Onur releases" /></a>
+	<a href="https://discord.gg/eGPBMygcb"><img src="https://img.shields.io/badge/Discord-Upstream%20Community-5865F2?style=for-the-badge&logo=discord&logoColor=white" alt="Original StreamVault community" /></a>
 	<a href="docs/CHANGELOG.md"><img src="https://img.shields.io/badge/Changelog-View-2563eb?style=for-the-badge" alt="View changelog" /></a>
-	<a href="https://github.com/Davidona/StreamVault-IPTV/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/Davidona/StreamVault-IPTV/ci.yml?branch=master&style=for-the-badge&label=CI" alt="GitHub Actions status" /></a>
-	<a href="https://ko-fi.com/davidona"><img src="https://img.shields.io/badge/Support-Ko--fi-ff5f5f?style=for-the-badge&logo=kofi" alt="Support on Ko-fi" /></a>
-	<a href="LICENSE"><img src="https://img.shields.io/badge/License-StreamVault_OSL-0284c7?style=for-the-badge" alt="License" /></a>
+	<a href="https://github.com/onsenturk/StreamVault-IPTV/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/onsenturk/StreamVault-IPTV/ci.yml?branch=master&style=for-the-badge&label=CI" alt="Fork GitHub Actions status" /></a>
+	<a href="https://ko-fi.com/davidona"><img src="https://img.shields.io/badge/Support-Original_Developer-ff5f5f?style=for-the-badge&logo=kofi" alt="Support David Nashash on Ko-fi" /></a>
+	<a href="LICENSE"><img src="https://img.shields.io/badge/License-Non--Commercial-0284c7?style=for-the-badge" alt="StreamVault Source-Available License (Non-Commercial)" /></a>
 </p>
 
-StreamVault is a TV-first IPTV player for Android TV built with Kotlin, Jetpack Compose, Room, Hilt, and Media3.
+StreamVault by Onur is a TV-first IPTV player for Android TV built with Kotlin, Jetpack Compose, Room, Hilt, and Media3.
+
+The fork uses `com.onsenturk.streamvault` (`.debug` and `.beta` for test channels), so it can coexist with the original app. Changing the application ID does not copy the original app's private data or confer Android publisher trust. Export a backup from the old app before moving data; retain it until the fork's restore is verified. See [fork identity and signing](docs/FORK_IDENTITY.md).
 
 It is designed for large playlists, remote-friendly browsing, fast provider switching, and a polished living-room playback experience. StreamVault supports `M3U` playlists, `Xtream Codes`, `Stalker Portal`, and `Jellyfin` providers, with dedicated flows for `Live TV`, `Movies`, and `Series`.
 
@@ -67,7 +76,7 @@ Built for Android TV first, StreamVault focuses on the things generic IPTV apps 
 - Separate onboarding and sync flows for live channels, movies, series, and guide data
 - Fast switching between providers with provider-scoped settings
 - Combined M3U profiles for merging multiple M3U providers into a single Live TV source
-- QR-based provider pairing from a phone on the same LAN for faster TV setup
+- On-device provider entry; Jellyfin Quick Connect remains available, but legacy browser QR pairing is removed from this fork
 
 ### Navigation And TV UX
 
@@ -162,16 +171,17 @@ Built for Android TV first, StreamVault focuses on the things generic IPTV apps 
 
 ## Download
 
-- [Download latest StreamVault.apk](https://github.com/Davidona/StreamVault-IPTV/releases/latest/download/StreamVault.apk)
-- The app can also detect and download newer releases in-app through GitHub Releases.
+- [StreamVault by Onur releases](https://github.com/onsenturk/StreamVault-IPTV/releases): only use artifacts explicitly built for `com.onsenturk.streamvault` and the intended channel.
+- Both stable and beta update checks use the fork's GitHub Releases, not the original project's release feed. Updates must still pass checksum, package, and signing-certificate checks.
+- Release signing must be configured with the fork maintainer's own permanent key. A debug APK is a test build; an unsigned release APK cannot be installed. A new key or app name does not automatically remove Play Protect or device-policy warnings.
 - GitHub Actions still runs build and test validation on pushes and pull requests.
 - GitHub Releases are now published only when the workflow is started manually with `workflow_dispatch`, so versioned releases do not get created by mistake on every push.
 
 ## Support
 
-If StreamVault is useful to you, you can support development here:
+Report fork-specific issues to [Onur's repository](https://github.com/onsenturk/StreamVault-IPTV/issues). The original developer's support link is retained as required by the license:
 
-- [Support on Ko-fi](https://ko-fi.com/davidona)
+- [Support David Nashash (Davidona) on Ko-fi](https://ko-fi.com/davidona)
 
 ## Project Structure
 

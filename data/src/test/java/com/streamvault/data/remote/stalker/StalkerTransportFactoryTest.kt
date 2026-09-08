@@ -18,6 +18,20 @@ import org.junit.Test
 class StalkerTransportFactoryTest {
 
     @Test
+    fun `TLS classification finds suppressed route failures without looping over cycles`() {
+        val connectionFailure = java.net.ConnectException("IPv6 route unavailable")
+        val certificateFailure = javax.net.ssl.SSLHandshakeException("Untrusted certificate")
+        connectionFailure.addSuppressed(certificateFailure)
+        assertThat(connectionFailure.isTlsIdentityFailure()).isTrue()
+
+        val firstFailure = IOException("first route")
+        val secondFailure = IOException("second route")
+        firstFailure.addSuppressed(secondFailure)
+        secondFailure.addSuppressed(firstFailure)
+        assertThat(firstFailure.isTlsIdentityFailure()).isFalse()
+    }
+
+    @Test
     fun `HTTP sends nothing until exact origin is accepted`() {
         MockWebServer().use { server ->
             server.enqueue(MockResponse().setBody("ok"))
@@ -142,7 +156,8 @@ class StalkerTransportFactoryTest {
             assertThat(strictError).isInstanceOf(IOException::class.java)
 
             val challenge = factory.challengeForTlsFailure(url.toString(), strictError!!)
-            assertThat(challenge).isNotNull()
+            com.google.common.truth.Truth.assertWithMessage("TLS failure: %s", strictError.stackTraceToString())
+                .that(challenge).isNotNull()
             assertThat(challenge!!.reason).isEqualTo(StalkerTransportChallengeReason.INVALID_TLS)
             assertThat(challenge.proposedSpkiSha256).isNotEmpty()
 

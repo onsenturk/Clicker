@@ -1,6 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">StreamVault</string>
+    <string name="app_name" translatable="false">StreamVault by Onur</string>
+    <string name="fork_tv_input_label" translatable="false">StreamVault by Onur Live Channels</string>
 
     
     <string name="nav_home">Home</string>

@@ -393,6 +393,18 @@ internal fun LazyListScope.settingsAboutSection(
     onDeleteCrashReport: () -> Unit
 ) {
     item {
+        SettingsSectionHeader(
+            title = stringResource(R.string.app_name),
+            subtitle = stringResource(R.string.fork_identity_notice)
+        )
+        ClickableSettingsRow(
+            label = stringResource(R.string.settings_github),
+            value = stringResource(R.string.fork_repository_url),
+            onClick = { onOpenUri(context.getString(R.string.fork_repository_url)) }
+        )
+    }
+
+    item {
         val downloadStatus = uiState.appUpdate.downloadStatus
         LaunchedEffect(downloadStatus) {
             if (downloadStatus == com.streamvault.app.update.AppUpdateDownloadStatus.Downloading) {
@@ -518,7 +530,16 @@ internal fun LazyListScope.settingsAboutSection(
     item {
         SettingsRow(label = stringResource(R.string.settings_build), value = stringResource(R.string.settings_build_desc))
         SettingsRow(label = stringResource(R.string.settings_build_verification), value = buildVerificationLabel)
+        SettingsSectionHeader(
+            title = stringResource(R.string.fork_original_project),
+            subtitle = stringResource(R.string.fork_original_credit)
+        )
         SettingsRow(label = stringResource(R.string.settings_developed_by), value = stringResource(R.string.settings_developer_name))
+        ClickableSettingsRow(
+            label = stringResource(R.string.settings_github),
+            value = stringResource(R.string.fork_original_repository_url),
+            onClick = { onOpenUri(context.getString(R.string.fork_original_repository_url)) }
+        )
         ClickableSettingsRow(
             label = stringResource(R.string.settings_github),
             value = stringResource(R.string.settings_github_url),

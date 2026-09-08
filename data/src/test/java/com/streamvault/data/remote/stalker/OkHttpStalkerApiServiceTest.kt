@@ -3162,8 +3162,9 @@ class OkHttpStalkerApiServiceTest {
         locale = "en"
     )
 
-    private class PendingCall : Call {
-        private val request = Request.Builder().url("https://portal.example.com/server/load.php").build()
+    private class PendingCall(
+        private val request: Request = Request.Builder().url("https://portal.example.com/server/load.php").build()
+    ) : Call by OkHttpClient().newCall(request) {
         @Volatile private var callback: Callback? = null
         @Volatile var enqueued = false
         @Volatile var cancelled = false
@@ -3180,7 +3181,7 @@ class OkHttpStalkerApiServiceTest {
         override fun isExecuted(): Boolean = enqueued
         override fun isCanceled(): Boolean = cancelled
         override fun timeout(): Timeout = Timeout.NONE
-        override fun clone(): Call = PendingCall()
+        override fun clone(): Call = PendingCall(request)
 
         fun respond() {
             callback?.onResponse(

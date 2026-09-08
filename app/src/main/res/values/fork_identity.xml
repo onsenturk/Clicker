@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="fork_identity_notice" translatable="false">Based on StreamVault. Non-commercial fork maintained by Onur (onsenturk).</string>
+    <string name="fork_repository_url" translatable="false">https://github.com/onsenturk/StreamVault-IPTV</string>
+    <string name="fork_original_project" translatable="false">Original StreamVault Project</string>
+    <string name="fork_original_credit" translatable="false">Original developer: David Nashash (Davidona). This fork is independently maintained and is not endorsed by the original developer.</string>
+    <string name="fork_original_repository_url" translatable="false">https://github.com/Davidona/StreamVault-IPTV</string>
+</resources>

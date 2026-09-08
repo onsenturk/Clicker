@@ -5,7 +5,7 @@ pluginManagement {
             mavenCentral()
         }
         dependencies {
-            classpath("com.android.tools:r8:8.13.19")
+            classpath("com.android.tools:r8:8.13.23")
         }
     }
     repositories {

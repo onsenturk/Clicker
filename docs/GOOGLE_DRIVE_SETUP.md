@@ -20,7 +20,7 @@ That means:
 | Build flavour | Needs its own OAuth client | Why |
 |---|---|---|
 | `master` debug, local on dev machine | yes | each developer signs with their own debug keystore (different SHA-1) |
-| Official release on Play Store | yes | Davidona's release key SHA-1 |
+| Fork release on Play Store | yes | the fork's package and Play app-signing certificate SHA-1 |
 | CI build | yes (or share the dev one) | depending on signing strategy |
 
 The code in `data/manager/GoogleDriveBackupSyncManager.kt` never references an
@@ -62,12 +62,20 @@ flow to all users, see the publishing section below.
 | Field | Value |
 |---|---|
 | Name | `StreamVault — debug (<your handle>)` |
-| Package name | `com.streamvault.app` |
+| Package name | `com.onsenturk.streamvault.debug` for this fork's debug build |
 | SHA-1 certificate fingerprint | from `keytool -list -v -keystore ~/.android/debug.keystore -alias androiddebugkey -storepass android` |
 
 Repeat the step for every signing certificate that will run the feature
 (release key, CI key, …). You don't need to copy any returned ID anywhere —
 the runtime resolves it transparently.
+
+Use `com.onsenturk.streamvault` for release and `com.onsenturk.streamvault.beta`
+for beta. Register each package with the certificate that actually signs the
+installed APK. With Play App Signing this is the app-signing certificate, not
+the upload certificate. The original developer's OAuth registrations do not
+authorize this fork. Its separate Cloud project also does not automatically
+gain access to the original app's private Drive folder; use local backup
+export/import when migrating between them.
 
 ### 5. Add a Google account to the test device
 

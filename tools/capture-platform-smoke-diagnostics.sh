@@ -18,9 +18,9 @@ capture() {
 capture adb-devices.txt adb devices -l
 capture device-properties.txt adb -s "$device_serial" shell getprop
 capture instrumentation.txt adb -s "$device_serial" shell pm list instrumentation
-capture app-package.txt adb -s "$device_serial" shell dumpsys package com.streamvault.app.debug
-capture app-processes.txt adb -s "$device_serial" shell dumpsys activity processes com.streamvault.app.debug
+capture app-package.txt adb -s "$device_serial" shell dumpsys package com.onsenturk.streamvault.debug
+capture app-processes.txt adb -s "$device_serial" shell dumpsys activity processes com.onsenturk.streamvault.debug
 capture crash-buffer.log adb -s "$device_serial" logcat -b crash -d -v threadtime
 capture recent-logcat.log adb -s "$device_serial" logcat -d -v threadtime -t 4000
 capture dropbox-app-crash.txt adb -s "$device_serial" shell dumpsys dropbox --print data_app_crash
-capture app-crash-report.txt adb -s "$device_serial" shell run-as com.streamvault.app.debug cat files/diagnostics/crash/latest-crash.txt
+capture app-crash-report.txt adb -s "$device_serial" shell run-as com.onsenturk.streamvault.debug cat files/diagnostics/crash/latest-crash.txt

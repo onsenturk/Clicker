@@ -595,12 +595,24 @@ fun ProviderSetupScreen(
                     modifier = Modifier.fillMaxSize(),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    SourceTypeTabRow(
-                        sourceType = sourceType,
-                        isEditing = uiState.isEditing,
-                        onSelect = ::onSourceTypeSelected,
-                        modifier = Modifier.fillMaxWidth()
-                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        SourceTypeTabRow(
+                            sourceType = sourceType,
+                            isEditing = uiState.isEditing,
+                            onSelect = ::onSourceTypeSelected,
+                            modifier = Modifier.weight(1f)
+                        )
+                        if (!uiState.isEditing) {
+                            ImportOptionsButton(
+                                text = stringResource(R.string.settings_restore_data),
+                                onClick = { showImportOptionsDialog = true }
+                            )
+                        }
+                    }
                     ProviderFormContent(
                         sourceType = sourceType,
                         uiState = uiState,
@@ -654,16 +666,6 @@ fun ProviderSetupScreen(
                 }
             }
 
-            if (!uiState.isEditing && !isWide) {
-                ImportOptionsButton(
-                    text = stringResource(R.string.settings_restore_data),
-                    onClick = { showImportOptionsDialog = true },
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(top = 10.dp, end = 6.dp)
-                        .zIndex(1f)
-                )
-            }
         }
     }
 
@@ -3115,7 +3117,7 @@ private fun ImportOptionsButton(
     ) {
         Row(
             modifier = Modifier
-                .fillMaxSize()
+                .fillMaxHeight()
                 .padding(horizontal = if (compact) 10.dp else 14.dp),
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically

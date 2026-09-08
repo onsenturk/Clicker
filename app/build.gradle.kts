@@ -71,12 +71,14 @@ val buildTimestamp = providers.gradleProperty("buildTimestamp").map { value ->
     }
 }.orElse(0L)
 
+val applicationIdBase = "com.onsenturk.streamvault"
+
 android {
     namespace = "com.streamvault.app"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.streamvault.app"
+        applicationId = applicationIdBase
         minSdk = 25
         targetSdk = 36
         versionCode = 19
@@ -98,7 +100,7 @@ android {
             require(enabled in setOf("true", "false")) { "livePlaybackValidation must be true or false" }
             testInstrumentationRunnerArguments["livePlaybackValidation"] = enabled
         }
-        buildConfigField("String", "OFFICIAL_APPLICATION_ID", "\"com.streamvault.app\"")
+        buildConfigField("String", "OFFICIAL_APPLICATION_ID", "\"$applicationIdBase\"")
         buildConfigField("String", "OFFICIAL_SIGNING_CERT_SHA256", "\"${officialSigningCertSha256.get()}\"")
         buildConfigField("String", "APP_UPDATE_CHANNEL", "\"stable\"")
         buildConfigField("long", "BUILD_TIMESTAMP_UTC", "0L")
@@ -185,6 +187,7 @@ android {
                 "DebugProbesKt.bin",
                 "kotlin-tooling-metadata.json",
                 "META-INF/versions/9/previous-compilation-data.bin",
+                "META-INF/versions/9/OSGI-INF/MANIFEST.MF",
                 "META-INF/com.android.tools/**"
             )
         }

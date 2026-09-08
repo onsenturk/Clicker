@@ -13,6 +13,14 @@ import org.mockito.kotlin.whenever
 
 class GitHubReleaseCheckerTest {
     @Test
+    fun releaseFeedsTargetTheMaintainedFork() {
+        assertThat(AppUpdateChannel.Stable.releaseApiUrl)
+            .isEqualTo("https://api.github.com/repos/onsenturk/StreamVault-IPTV/releases/latest")
+        assertThat(AppUpdateChannel.Beta.releaseApiUrl)
+            .isEqualTo("https://api.github.com/repos/onsenturk/StreamVault-IPTV/releases?per_page=20")
+    }
+
+    @Test
     fun parseReleaseAssetSha256DigestAcceptsGitHubDigestShape() {
         val digest = "sha256:ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789"
 

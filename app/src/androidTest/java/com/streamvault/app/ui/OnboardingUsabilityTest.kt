@@ -11,6 +11,7 @@ import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.hasSetTextAction
+import androidx.compose.ui.test.isDisplayed
 import androidx.compose.ui.test.isFocused
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -81,7 +82,7 @@ class OnboardingUsabilityTest {
         }
 
         composeRule.onNodeWithContentDescription(activity.getString(R.string.settings_restore_data))
-            .performScrollTo()
+            .apply { if (!isDisplayed()) performScrollTo() }
             .assertIsDisplayed()
             .activateForDevice(activity)
         composeRule.waitForIdle()

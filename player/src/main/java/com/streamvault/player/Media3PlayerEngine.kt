@@ -1354,7 +1354,8 @@ class Media3PlayerEngine @Inject constructor(
                     override fun canReuseCodec(
                         codecInfo: MediaCodecInfo,
                         oldFormat: Format,
-                        newFormat: Format
+                        newFormat: Format,
+                        isAdaptiveFormatChange: Boolean
                     ): DecoderReuseEvaluation {
                         return DecoderReuseEvaluation(
                             codecInfo.name,
