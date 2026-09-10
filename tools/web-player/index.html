@@ -1,0 +1,978 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' blob: https://cdn.jsdelivr.net https://unpkg.com; style-src 'self' 'unsafe-inline'; img-src * data: blob:; media-src * data: blob:; connect-src *; worker-src blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<title>StreamVault Web Player</title>
+<style>
+  :root {
+    --bg: #0e1116; --bg-2: #151a21; --bg-3: #1d232c; --line: #262e3a;
+    --fg: #e6edf3; --fg-dim: #8b98a9; --accent: #4c9aff;
+    --ok: #3fb950; --warn: #d29922; --err: #f85149; --row-h: 54px;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    background: var(--bg); color: var(--fg); display: flex; flex-direction: column;
+    font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  button, select, input { font: inherit; color: inherit; }
+  button {
+    background: var(--bg-3); border: 1px solid var(--line); border-radius: 6px;
+    padding: 6px 12px; cursor: pointer;
+  }
+  button:hover:not(:disabled) { border-color: var(--accent); }
+  button:disabled { opacity: .45; cursor: default; }
+  input[type=text], input[type=search], select {
+    background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 6px 10px;
+  }
+  input:focus, select:focus, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+  header {
+    display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+    padding: 10px 14px; background: var(--bg-2); border-bottom: 1px solid var(--line);
+  }
+  header h1 { font-size: 14px; margin: 0 8px 0 0; font-weight: 600; letter-spacing: .3px; }
+  header .sep { flex: 1; }
+  #urlInput { width: 300px; }
+
+  main { flex: 1; display: flex; min-height: 0; }
+
+  #sidebar {
+    width: 340px; flex: none; display: flex; flex-direction: column;
+    border-right: 1px solid var(--line); background: var(--bg-2); min-height: 0;
+  }
+  #filters { padding: 10px; display: flex; flex-direction: column; gap: 8px; border-bottom: 1px solid var(--line); }
+  #filters input, #filters select { width: 100%; }
+  #count { color: var(--fg-dim); font-size: 12px; }
+
+  #list { flex: 1; overflow-y: auto; position: relative; min-height: 0; }
+  #spacer { position: relative; width: 100%; }
+  .row {
+    position: absolute; left: 0; right: 0; height: var(--row-h);
+    display: flex; align-items: center; gap: 10px; padding: 0 10px;
+    cursor: pointer; border-bottom: 1px solid var(--line); overflow: hidden;
+  }
+  .row:hover { background: var(--bg-3); }
+  .row.active { background: #1b3a5c; }
+  .row img { width: 40px; height: 30px; object-fit: contain; flex: none; background: var(--bg); border-radius: 3px; }
+  .row .meta { min-width: 0; flex: 1; }
+  .row .name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .row .grp { font-size: 11px; color: var(--fg-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .row .fav { flex: none; background: none; border: none; padding: 2px 6px; color: var(--fg-dim); font-size: 15px; }
+  .row .fav.on { color: var(--warn); }
+
+  #stage { flex: 1; display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+  #videoWrap { background: #000; flex: 1; min-height: 0; position: relative; }
+  video { width: 100%; height: 100%; background: #000; display: block; }
+  #nowPlaying {
+    padding: 8px 14px; background: var(--bg-2); border-top: 1px solid var(--line);
+    border-bottom: 1px solid var(--line); display: flex; gap: 12px; align-items: center; flex-wrap: wrap;
+  }
+  #npName { font-weight: 600; }
+  .badge {
+    font-size: 11px; padding: 2px 8px; border-radius: 999px;
+    background: var(--bg-3); border: 1px solid var(--line); color: var(--fg-dim);
+  }
+  #npUrl { max-width: 46ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #log {
+    height: 230px; overflow-y: auto; padding: 8px 14px; background: var(--bg);
+    font: 12px/1.55 ui-monospace, SFMono-Regular, Consolas, monospace; white-space: pre-wrap;
+  }
+  #log .e { display: block; padding: 2px 0; border-bottom: 1px solid #1a1f27; }
+  .lv-info { color: var(--fg-dim); } .lv-ok { color: var(--ok); }
+  .lv-warn { color: var(--warn); } .lv-err { color: var(--err); }
+  .lv-head { color: var(--fg); font-weight: 600; }
+
+  #drop {
+    position: fixed; inset: 0; background: rgba(14,17,22,.94); display: none;
+    align-items: center; justify-content: center; font-size: 20px; z-index: 50;
+    border: 3px dashed var(--accent);
+  }
+  #drop.on { display: flex; }
+  .empty { padding: 24px 14px; color: var(--fg-dim); text-align: center; font-size: 13px; }
+
+  #httpsBanner {
+    display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+    padding: 10px 14px; background: #3d2f12; border-bottom: 1px solid var(--warn); color: #f2e3c4;
+  }
+  #httpsBanner[hidden] { display: none; }
+  #httpsBanner code { background: rgba(0,0,0,.35); padding: 1px 5px; border-radius: 4px; }
+  #httpsBanner a { color: #fff; font-weight: 600; }
+</style>
+</head>
+<body>
+
+<div id="httpsBanner" hidden>
+  <span>
+    <strong>This page is served over HTTPS.</strong>
+    Browsers block <code>http://</code> streams from an <code>https://</code> page, and every
+    <code>.dev</code> domain is HSTS-preloaded so it can never be served over <code>http</code>.
+    If your provider is HTTP-only, run the player from disk instead.
+  </span>
+  <a id="downloadSelf" download="streamvault-web-player.html" href="./index.html">Download player</a>
+  <button id="dismissBanner" type="button">Dismiss</button>
+</div>
+
+<header>
+  <h1>StreamVault Web Player</h1>
+  <button id="pickBtn">Open M3U file…</button>
+  <input type="file" id="fileInput" accept=".m3u,.m3u8,.txt,text/plain" hidden>
+  <input type="text" id="urlInput" placeholder="…or paste an M3U URL (needs CORS)">
+  <button id="urlBtn">Load URL</button>
+  <span class="sep"></span>
+  <label for="engineSel" class="badge">Engine</label>
+  <select id="engineSel">
+    <option value="auto">Auto</option>
+    <option value="hlsjs">hls.js (MSE)</option>
+    <option value="mpegts">mpegts.js</option>
+    <option value="native">Native &lt;video&gt;</option>
+  </select>
+  <button id="diagBtn" disabled>Diagnose</button>
+  <label class="badge" title="Probe the provider for an HTTPS endpoint before playing. Required on any https:// origin, including every .dev domain.">
+    <input type="checkbox" id="httpsUpgrade"> Auto-HTTPS
+  </label>
+  <button id="copyBtn">Copy log</button>
+  <button id="clearBtn">Clear playlist</button>
+</header>
+
+<main>
+  <aside id="sidebar">
+    <div id="filters">
+      <input type="search" id="search" placeholder="Search channels…" autocomplete="off">
+      <select id="groupSel"><option value="">All groups</option></select>
+      <label style="font-size:12px;color:var(--fg-dim);display:flex;gap:6px;align-items:center">
+        <input type="checkbox" id="favOnly"> Favourites only
+      </label>
+      <span id="count">No playlist loaded</span>
+    </div>
+    <div id="list"><div id="spacer"></div><div class="empty" id="emptyMsg">Drop an .m3u file anywhere on this page.</div></div>
+  </aside>
+
+  <section id="stage">
+    <!-- No crossorigin attribute: it would force native <video> loads into CORS mode. -->
+    <div id="videoWrap"><video id="video" controls playsinline></video></div>
+    <div id="nowPlaying">
+      <span id="npName">Nothing playing</span>
+      <span class="badge" id="npType">—</span>
+      <span class="badge" id="npEngine">—</span>
+      <span class="sep" style="flex:1"></span>
+      <span class="badge" id="npUrl">—</span>
+    </div>
+    <div id="log" aria-live="polite"></div>
+  </section>
+</main>
+
+<div id="drop">Drop your .m3u playlist here</div>
+
+<script>
+(() => {
+'use strict';
+
+/* ------------------------------------------------------------------ *
+ * Library loading (CDN, with mirror fallback). No build step.
+ * ------------------------------------------------------------------ */
+const LIBS = {
+  hls:    ['https://cdn.jsdelivr.net/npm/hls.js@1/dist/hls.min.js',
+           'https://unpkg.com/hls.js@1/dist/hls.min.js'],
+  mpegts: ['https://cdn.jsdelivr.net/npm/mpegts.js@1/dist/mpegts.js',
+           'https://unpkg.com/mpegts.js@1/dist/mpegts.js'],
+};
+const libState = { hls: null, mpegts: null };
+
+function loadScript(src) {
+  return new Promise((res, rej) => {
+    const s = document.createElement('script');
+    s.src = src; s.async = true;
+    s.onload = () => res();
+    s.onerror = () => rej(new Error('failed: ' + src));
+    document.head.appendChild(s);
+  });
+}
+async function ensureLib(key) {
+  if (libState[key]) return libState[key];
+  libState[key] = (async () => {
+    for (const url of LIBS[key]) {
+      try { await loadScript(url); return true; } catch { /* try mirror */ }
+    }
+    return false;
+  })();
+  return libState[key];
+}
+
+/* ------------------------------------------------------------------ *
+ * Logging
+ * ------------------------------------------------------------------ */
+const logEl = document.getElementById('log');
+const MAX_LOG = 300;
+function log(level, msg) {
+  const el = document.createElement('span');
+  el.className = 'e lv-' + level;
+  el.textContent = new Date().toLocaleTimeString() + '  ' + msg;
+  logEl.appendChild(el);
+  while (logEl.childElementCount > MAX_LOG) logEl.removeChild(logEl.firstChild);
+  logEl.scrollTop = logEl.scrollHeight;
+}
+function logHead(msg) { log('head', '\n── ' + msg + ' ' + '─'.repeat(Math.max(0, 48 - msg.length))); }
+
+/* ------------------------------------------------------------------ *
+ * URL safety + credential redaction
+ * ------------------------------------------------------------------ */
+const SAFE_STREAM_SCHEMES = new Set(['http:', 'https:']);
+
+function parseUrl(raw, base) {
+  try { return new URL(raw, base || undefined); } catch { return null; }
+}
+function isSafeStreamUrl(raw) {
+  const u = parseUrl(raw, location.href);
+  return !!u && SAFE_STREAM_SCHEMES.has(u.protocol);
+}
+function isSafeImageUrl(raw) {
+  const u = parseUrl(raw, location.href);
+  if (!u) return false;
+  if (u.protocol === 'http:' || u.protocol === 'https:') return true;
+  return u.protocol === 'data:' && /^data:image\//i.test(raw);
+}
+
+const SECRET_PARAMS = ['username', 'password', 'pass', 'user', 'token', 'key', 'auth', 'sig', 'hash'];
+
+// Xtream URLs embed credentials as path segments (/live/USER/PASS/1234.ts).
+function redactUrl(raw) {
+  const u = parseUrl(raw, location.href);
+  if (!u) return '<unparseable url>';
+  if (u.username) u.username = '***';
+  if (u.password) u.password = '***';
+  for (const k of SECRET_PARAMS) if (u.searchParams.has(k)) u.searchParams.set(k, '***');
+  const segs = u.pathname.split('/');
+  let last = segs.length - 1;
+  while (last > 0 && segs[last] === '') last--;
+  const tail = segs[last] || '';
+  if (/^\d+(\.\w+)?$/.test(tail) && last >= 3) { segs[last - 1] = '***'; segs[last - 2] = '***'; }
+  u.pathname = segs.join('/');
+  return u.toString();
+}
+
+/* ------------------------------------------------------------------ *
+ * M3U parsing
+ * ------------------------------------------------------------------ */
+const ATTR_RE = /([A-Za-z0-9_-]+)="([^"]*)"/g;
+
+function parseExtInf(line) {
+  const body = line.slice(line.indexOf(':') + 1);
+  // The separator is the first comma outside a quoted attribute value, so
+  // display names may themselves contain quotes and commas.
+  let comma = -1, inQuote = false;
+  for (let i = 0; i < body.length; i++) {
+    const c = body.charCodeAt(i);
+    if (c === 34) inQuote = !inQuote;
+    else if (c === 44 && !inQuote) { comma = i; break; }
+  }
+  const name = comma >= 0 ? body.slice(comma + 1).trim() : '';
+  const attrsPart = comma >= 0 ? body.slice(0, comma) : body;
+  const attrs = Object.create(null);
+  ATTR_RE.lastIndex = 0;
+  let m;
+  while ((m = ATTR_RE.exec(attrsPart)) !== null) attrs[m[1].toLowerCase()] = m[2];
+  return {
+    name: name || attrs['tvg-name'] || 'Unnamed channel',
+    logo: attrs['tvg-logo'] || '',
+    group: attrs['group-title'] || 'Ungrouped',
+  };
+}
+
+function parseM3U(text) {
+  const out = [];
+  const groups = new Set();
+  let pending = null;
+  let uaHint = false;
+  for (const raw of text.split(/\r?\n/)) {
+    const line = raw.trim();
+    if (!line) continue;
+    if (line.startsWith('#EXTINF')) {
+      pending = parseExtInf(line);
+    } else if (line.startsWith('#EXTGRP:')) {
+      if (pending) { const g = line.slice(8).trim(); if (g) pending.group = g; }
+    } else if (line.startsWith('#EXTVLCOPT:') || line.startsWith('#EXTHTTP:')) {
+      if (/user-agent|referer|referrer|http-header/i.test(line)) { if (pending) pending.needsHeaders = true; uaHint = true; }
+    } else if (line.startsWith('#')) {
+      continue;
+    } else if (pending) {
+      pending.url = line;
+      groups.add(pending.group);
+      out.push(pending);
+      pending = null;
+    }
+  }
+  return { channels: out, groups: [...groups].sort((a, b) => a.localeCompare(b)), uaHint };
+}
+
+/* ------------------------------------------------------------------ *
+ * Stream type detection
+ * ------------------------------------------------------------------ */
+function detectType(url) {
+  const u = parseUrl(url, location.href);
+  const path = (u ? u.pathname : url).toLowerCase();
+  if (path.endsWith('.m3u8')) return 'hls';
+  if (path.endsWith('.mpd')) return 'dash';
+  if (/\.(ts|mts|m2ts|mpegts)$/.test(path)) return 'mpegts';
+  if (/\.(mp4|m4v|webm|ogv|mov)$/.test(path)) return 'native';
+  if (/\.(mkv|avi|flv|wmv|mpg|mpeg|vob|divx)$/.test(path)) return 'native-risky';
+  const segs = path.split('/').filter(Boolean);
+  // Xtream live channels are extension-less and end in a numeric stream id.
+  if (segs.length && /^\d+$/.test(segs[segs.length - 1])) return 'mpegts';
+  return 'hls';
+}
+
+const NATIVE_HLS = (() => {
+  const v = document.createElement('video');
+  return !!v.canPlayType('application/vnd.apple.mpegurl');
+})();
+
+// Xtream serves every live channel as raw TS and as HLS; hls.js copes with
+// AAC-in-TS that mpegts.js cannot remux.
+function xtreamHlsVariant(raw) {
+  const u = parseUrl(raw, location.href);
+  if (!u) return null;
+  if (/\/\d+$/.test(u.pathname)) { u.pathname += '.m3u8'; return u.toString(); }
+  if (/\/\d+\.ts$/i.test(u.pathname)) { u.pathname = u.pathname.replace(/\.ts$/i, '.m3u8'); return u.toString(); }
+  return null;
+}
+
+/* ------------------------------------------------------------------ *
+ * Diagnostics — the point of this tool
+ * ------------------------------------------------------------------ */
+function preflightNotes(url) {
+  const notes = [];
+  const u = parseUrl(url, location.href);
+  if (location.protocol === 'file:') {
+    notes.push(['warn', 'Page origin is "null" (file://). Segment fetches only succeed if the server sends "Access-Control-Allow-Origin: *". Most IPTV panels do not.']);
+  }
+  if (location.protocol === 'https:' && u && u.protocol === 'http:') {
+    notes.push(['err', 'MIXED CONTENT: an https page cannot load an http:// stream. The browser blocks it before any request is made. Fix: open this file from disk (file://) or use an https stream URL.']);
+  }
+  return notes;
+}
+
+async function probe(url) {
+  const notes = [];
+
+  // Pass 1 — real CORS request. Success means the response is actually readable.
+  try {
+    const ctl = new AbortController();
+    const timer = setTimeout(() => ctl.abort(), 8000);
+    const res = await fetch(url, {
+      method: 'GET', mode: 'cors', credentials: 'omit', redirect: 'follow',
+      headers: { 'Range': 'bytes=0-1' }, signal: ctl.signal,
+    });
+    clearTimeout(timer);
+    try { ctl.abort(); } catch {}
+
+    const acao = res.headers.get('access-control-allow-origin');
+    notes.push(['ok', `CORS probe OK — HTTP ${res.status} ${res.statusText || ''}`.trim()]);
+    notes.push(['info', `Access-Control-Allow-Origin: ${acao || '(readable, but header not exposed)'}`]);
+    notes.push(['info', `Content-Type: ${res.headers.get('content-type') || '(none)'}`]);
+    if (res.status === 401 || res.status === 403) notes.push(['err', `HTTP ${res.status} — provider rejected the request. Credentials expired, connection limit reached, or client blocked.`]);
+    else if (res.status === 404) notes.push(['err', 'HTTP 404 — channel is dead or the URL has expired.']);
+    else if (res.status >= 500) notes.push(['err', `HTTP ${res.status} — provider-side failure.`]);
+    else notes.push(['ok', 'Network path is clean. Any playback failure from here is a CODEC issue, not a transport issue.']);
+    return notes;
+  } catch (e) {
+    if (e && e.name === 'AbortError') {
+      notes.push(['err', 'CORS probe timed out after 8s — host is unreachable or extremely slow.']);
+      return notes;
+    }
+    notes.push(['err', 'CORS probe rejected with an opaque TypeError (the browser refuses to say why — by design).']);
+  }
+
+  // Pass 2 — opaque request. Distinguishes "CORS blocked" from "host unreachable".
+  try {
+    const ctl = new AbortController();
+    const timer = setTimeout(() => ctl.abort(), 8000);
+    await fetch(url, { method: 'GET', mode: 'no-cors', credentials: 'omit', signal: ctl.signal });
+    clearTimeout(timer);
+    try { ctl.abort(); } catch {}
+    notes.push(['err', 'VERDICT: CORS, or an edge/CDN rejection. The opaque (no-cors) request completed, so something answered — but opaque responses hide the status, which makes a Cloudflare 403/521 look identical to a healthy 200. Either way the browser discarded the body because no Access-Control-Allow-Origin header came back. Check the devtools console for the real status.']);
+    notes.push(['warn', 'This CANNOT be fixed from inside the page. Options: (1) a browser extension with host permissions, (2) a Tauri/Electron shell using a native HTTP client, (3) a CORS proxy. Safari can sometimes still play HLS via the native <video> engine — try Engine = Native.']);
+  } catch (e) {
+    if (e && e.name === 'AbortError') notes.push(['err', 'VERDICT: unreachable. Even the opaque request timed out — DNS failure, dead host, or the provider is blocking you.']);
+    else notes.push(['err', 'VERDICT: unreachable. Both requests failed at the transport layer — DNS, TLS, offline, or blocked by an extension/firewall.']);
+  }
+  return notes;
+}
+
+async function runDiagnosis(ch) {
+  logHead('Diagnosing "' + ch.name + '"');
+  log('info', 'URL: ' + redactUrl(ch.url));
+  log('info', 'Detected type: ' + detectType(ch.url) + '   |   Page origin: ' + location.origin);
+  if (ch.needsHeaders) {
+    log('err', 'Playlist requests a custom User-Agent/Referer for this channel. JavaScript is forbidden from setting those headers, so this channel can never work in a plain web page.');
+  }
+  for (const [lv, msg] of preflightNotes(ch.url)) log(lv, msg);
+  const u = parseUrl(ch.url, location.href);
+  if (u && u.protocol === 'http:') await firstReachableHttps(ch.url, log);
+  for (const [lv, msg] of await probe(ch.url)) log(lv, msg);
+}
+
+/* ------------------------------------------------------------------ *
+ * HTTPS endpoint discovery
+ *
+ * An https:// page cannot load http:// media: browsers auto-upgrade mixed
+ * audio/video and block it when the upgrade fails. Every .dev hostname is on
+ * the HSTS preload list, so a .dev deployment is always https and can only
+ * ever reach providers that terminate TLS somewhere.
+ * ------------------------------------------------------------------ */
+const HTTPS_PORTS = ['443', '8443', '2096', '2083', '2087'];
+
+function httpsVariants(raw) {
+  const u = parseUrl(raw, location.href);
+  if (!u || u.protocol !== 'http:') return [];
+  const seen = new Set(), out = [];
+  for (const port of [u.port, ...HTTPS_PORTS]) {
+    const v = parseUrl(u.toString());
+    if (!v) continue;
+    v.protocol = 'https:';
+    v.port = port === '443' ? '' : port;
+    const s = v.toString();
+    if (!seen.has(s)) { seen.add(s); out.push(s); }
+  }
+  return out;
+}
+
+// Opaque probe: resolving proves the TLS handshake succeeded and the host answered.
+async function firstReachableHttps(raw, note) {
+  const cands = httpsVariants(raw);
+  if (!cands.length) return null;
+  note && note('info', `Probing ${cands.length} HTTPS endpoint(s) on this provider…`);
+
+  const results = await Promise.all(cands.map(async (cand) => {
+    // Probe the origin, not the full path: firing six get.php or stream requests
+    // in parallel would burn the provider's concurrent-connection allowance.
+    const origin = (parseUrl(cand) || {}).origin;
+    if (!origin) return false;
+    try {
+      const ctl = new AbortController();
+      const timer = setTimeout(() => ctl.abort(), 4000);
+      await fetch(origin + '/', { method: 'GET', mode: 'no-cors', credentials: 'omit', signal: ctl.signal });
+      clearTimeout(timer);
+      try { ctl.abort(); } catch {}
+      return true;
+    } catch { return false; }
+  }));
+
+  for (let i = 0; i < cands.length; i++) {
+    if (results[i]) {
+      note && note('ok', 'HTTPS endpoint answered (status hidden by the opaque response): ' + redactUrl(cands[i]));
+      return cands[i];
+    }
+    note && note('info', '  no TLS on ' + redactUrl(cands[i]));
+  }
+  note && note('err', 'Provider appears to be HTTP-only. It cannot be used from an https:// page — and that includes every .dev domain, because .dev is HSTS-preloaded and can never be served over http.');
+  return null;
+}
+
+/* ------------------------------------------------------------------ *
+ * Playback
+ * ------------------------------------------------------------------ */
+let video = document.getElementById('video');
+const npName = document.getElementById('npName');
+const npType = document.getElementById('npType');
+const npEngine = document.getElementById('npEngine');
+const npUrl = document.getElementById('npUrl');
+const diagBtn = document.getElementById('diagBtn');
+
+let hlsInst = null, mpegtsInst = null, current = null, mediaRecovered = false;
+
+function teardown() {
+  if (hlsInst) { try { hlsInst.destroy(); } catch {} hlsInst = null; }
+  if (mpegtsInst) {
+    try { mpegtsInst.pause(); mpegtsInst.unload(); mpegtsInst.detachMediaElement(); mpegtsInst.destroy(); } catch {}
+    mpegtsInst = null;
+  }
+  // A destroyed MSE player still fires SourceBuffer callbacks against the old
+  // MediaSource, which breaks the next channel. Give every stream a fresh element.
+  const old = video;
+  try { old.pause(); } catch {}
+  old.removeAttribute('src');
+  try { old.load(); } catch {}
+  const next = old.cloneNode(false);
+  old.replaceWith(next);
+  video = next;
+  attachVideoListeners(video);
+  mediaRecovered = false;
+}
+
+function chooseEngine(type) {
+  const forced = document.getElementById('engineSel').value;
+  if (forced !== 'auto') return forced;
+  if (type === 'hls') return NATIVE_HLS ? 'native' : 'hlsjs'; // native HLS is not CORS-gated
+  if (type === 'mpegts') return 'mpegts';
+  return 'native';
+}
+
+async function play(ch) {
+  teardown();
+  diagBtn.disabled = false;
+  npName.textContent = ch.name;
+
+  if (!isSafeStreamUrl(ch.url)) {
+    current = ch;
+    npUrl.textContent = redactUrl(ch.url);
+    npType.textContent = 'blocked'; npEngine.textContent = '—';
+    log('err', 'Refused to load "' + ch.name + '": only http:// and https:// stream URLs are allowed.');
+    return;
+  }
+
+  logHead('Playing "' + ch.name + '"');
+  for (const [lv, msg] of preflightNotes(ch.url)) log(lv, msg);
+
+  let url = ch.url;
+  const isHttp = (parseUrl(url, location.href) || {}).protocol === 'http:';
+  if (isHttp && (location.protocol === 'https:' || document.getElementById('httpsUpgrade').checked)) {
+    const upgraded = await firstReachableHttps(url, log);
+    if (upgraded) { url = upgraded; log('ok', 'Upgraded this stream to HTTPS.'); }
+  }
+
+  current = Object.assign({}, ch, { url });
+  npUrl.textContent = redactUrl(url);
+  npUrl.title = redactUrl(url);
+
+  const type = detectType(url);
+  const engine = chooseEngine(type);
+  npType.textContent = type;
+  npEngine.textContent = engine;
+
+  log('info', `type=${type}  engine=${engine}  url=${redactUrl(url)}`);
+  if (ch.needsHeaders) log('warn', 'Channel declares a custom User-Agent/Referer — browsers forbid setting those from JS. Expect failure.');
+  if (type === 'dash') log('err', 'DASH (.mpd) is not supported by this player and no browser plays it natively.');
+  if (type === 'native-risky') log('warn', 'Container (mkv/avi/flv/mpeg) is rarely playable in a browser. HEVC, AC-3/E-AC-3 and MPEG-2 are unsupported almost everywhere.');
+
+  if (engine === 'hlsjs') return playHlsJs(url);
+  if (engine === 'mpegts') return playMpegTs(url);
+  return playNative(url, type);
+}
+
+async function playHlsJs(url) {
+  if (!(await ensureLib('hls')) || !window.Hls || !window.Hls.isSupported()) {
+    log('err', 'hls.js unavailable (CDN unreachable or MSE unsupported). Falling back to native.');
+    return playNative(url, 'hls');
+  }
+  hlsInst = new window.Hls({
+    enableWorker: true,
+    manifestLoadingMaxRetry: 1, levelLoadingMaxRetry: 1, fragLoadingMaxRetry: 2,
+    manifestLoadingTimeOut: 12000, fragLoadingTimeOut: 20000,
+  });
+  hlsInst.on(window.Hls.Events.MANIFEST_PARSED, (_e, d) => log('ok', `Manifest parsed — ${d.levels.length} quality level(s).`));
+  hlsInst.on(window.Hls.Events.FRAG_BUFFERED, () => { /* silent: too chatty */ });
+  hlsInst.on(window.Hls.Events.ERROR, onHlsError);
+  hlsInst.loadSource(url);
+  hlsInst.attachMedia(video);
+  attemptPlay();
+}
+
+function onHlsError(_evt, data) {
+  const H = window.Hls;
+  if (!data.fatal) { log('warn', 'hls.js recoverable: ' + data.details); return; }
+
+  if (data.type === H.ErrorTypes.NETWORK_ERROR) {
+    const code = data.response && data.response.code;
+    if (code === 0 || code === undefined) {
+      log('err', 'hls.js fatal network error with no HTTP status — the response was blocked before JS could read it. This is the CORS signature.');
+    } else {
+      log('err', `hls.js fatal network error — HTTP ${code} on ${data.details}.`);
+    }
+    log('info', 'Running automatic diagnosis…');
+    if (current) runDiagnosis(current);
+    teardown();
+  } else if (data.type === H.ErrorTypes.MEDIA_ERROR) {
+    if (!mediaRecovered) {
+      mediaRecovered = true;
+      log('warn', 'hls.js media error (' + data.details + ') — attempting one recovery.');
+      try { hlsInst.recoverMediaError(); return; } catch {}
+    }
+    log('err', 'hls.js fatal media error: ' + data.details + '. The stream downloaded fine but the browser cannot decode it (typically HEVC, AC-3/E-AC-3 or MPEG-2 audio/video).');
+    teardown();
+  } else {
+    log('err', 'hls.js fatal error: ' + data.type + ' / ' + data.details);
+    teardown();
+  }
+}
+
+async function playMpegTs(url, conservative) {
+  if (!(await ensureLib('mpegts')) || !window.mpegts || !window.mpegts.isSupported()) {
+    log('err', 'mpegts.js unavailable (CDN unreachable or MSE unsupported). Browsers cannot play raw MPEG-TS natively.');
+    return;
+  }
+  const M = window.mpegts;
+  // This provider load-balances via 302, so reuse the resolved node rather than
+  // re-following the redirect on every request. The conservative pass also stops
+  // mpegts.js padding audio gaps with silent frames, which is what MediaSource
+  // rejects on the AAC channels.
+  const cfg = conservative
+    ? { enableStashBuffer: true, autoCleanupSourceBuffer: true,
+        fixAudioTimestampGap: false, reuseRedirectedURL: true }
+    : { enableStashBuffer: false, stashInitialSize: 128, liveBufferLatencyChasing: true,
+        lazyLoad: false, autoCleanupSourceBuffer: true, reuseRedirectedURL: true };
+  mpegtsInst = M.createPlayer({ type: 'mpegts', isLive: true, url }, cfg);
+  mpegtsInst.on(M.Events.ERROR, (type, detail, info) => {
+    const code = info && (info.code !== undefined ? info.code : info.msg);
+    if (type === M.ErrorTypes.NETWORK_ERROR) {
+      if (code === 0 || code === undefined || detail === (M.ErrorDetails && M.ErrorDetails.NETWORK_EXCEPTION)) {
+        log('err', 'mpegts.js network exception with no HTTP status — response blocked before JS could read it. This is the CORS signature.');
+      } else {
+        log('err', `mpegts.js network error — ${detail} (${code}).`);
+      }
+      if (current) runDiagnosis(current);
+    } else if (type === M.ErrorTypes.MEDIA_ERROR) {
+      const D = M.ErrorDetails || {};
+      if (detail === D.MEDIA_CODEC_UNSUPPORTED || detail === D.MEDIA_FORMAT_UNSUPPORTED) {
+        log('err', `mpegts.js codec error — ${detail}. mpegts.js only handles H.264 + AAC; HEVC, AC-3/E-AC-3 and MPEG-2 always fail here.`);
+      } else if (!conservative) {
+        log('warn', `mpegts.js MSE error (${detail}) — retrying once with conservative buffering.`);
+        teardown();
+        playMpegTs(url, true);
+        return;
+      } else {
+        const alt = xtreamHlsVariant(url);
+        if (alt) {
+          log('warn', `MediaSource rejected the raw TS twice (${detail}) — retrying this channel as HLS.`);
+          teardown();
+          npEngine.textContent = 'hlsjs (ts fallback)';
+          playHlsJs(alt);
+          return;
+        }
+        log('err', `mpegts.js MSE error — ${detail}, and the conservative retry failed too. MediaSource is rejecting this stream's audio configuration; the channel is not playable in a browser.`);
+      }
+    } else {
+      log('err', `mpegts.js error — ${type} / ${detail}`);
+    }
+    teardown();
+  });
+  mpegtsInst.on(M.Events.MEDIA_INFO, (info) => {
+    log('ok', `Stream demuxed — video=${info.videoCodec || '?'} audio=${info.audioCodec || '?'} ${info.width || '?'}x${info.height || '?'}`);
+  });
+  mpegtsInst.attachMediaElement(video);
+  mpegtsInst.load();
+  attemptPlay();
+}
+
+function playNative(url, type) {
+  if (type === 'hls' && !NATIVE_HLS) {
+    log('warn', 'This browser has no native HLS support; hls.js is required. Switch Engine to hls.js.');
+  }
+  if (type === 'hls' && NATIVE_HLS) {
+    log('info', 'Using the native media stack. Segment fetches bypass the fetch/XHR CORS layer here, so this can work where hls.js cannot.');
+  }
+  video.src = url;
+  attemptPlay();
+}
+
+function attemptPlay() {
+  const p = video.play();
+  if (p && p.catch) {
+    p.catch((e) => {
+      if (e && e.name === 'NotAllowedError') log('warn', 'Autoplay blocked — press play on the video.');
+      else if (e && e.name !== 'AbortError') log('warn', 'play() rejected: ' + e.name + ' — ' + e.message);
+    });
+  }
+}
+
+function attachVideoListeners(el) {
+  el.addEventListener('error', () => {
+    const err = el.error;
+    if (!err) return;
+    const map = {
+      1: 'MEDIA_ERR_ABORTED — playback aborted.',
+      2: 'MEDIA_ERR_NETWORK — the network dropped mid-stream (or the response was blocked).',
+      3: 'MEDIA_ERR_DECODE — bytes arrived but the codec is unsupported or the stream is corrupt.',
+      4: 'MEDIA_ERR_SRC_NOT_SUPPORTED — the browser cannot handle this container/codec, or it never got a readable response.',
+    };
+    log('err', '<video> error: ' + (map[err.code] || 'code ' + err.code) + (err.message ? ' | ' + err.message : ''));
+    if (err.code === 4 && current) { log('info', 'Running automatic diagnosis…'); runDiagnosis(current); }
+  });
+  el.addEventListener('playing', () => log('ok', 'Playing — first frame rendered.'));
+  el.addEventListener('waiting', () => log('warn', 'Buffering…'));
+}
+attachVideoListeners(video);
+
+/* ------------------------------------------------------------------ *
+ * Channel list (virtualised — handles 100k+ rows)
+ * ------------------------------------------------------------------ */
+const ROW_H = 54, OVERSCAN = 6;
+const listEl = document.getElementById('list');
+const spacer = document.getElementById('spacer');
+const emptyMsg = document.getElementById('emptyMsg');
+const countEl = document.getElementById('count');
+const groupSel = document.getElementById('groupSel');
+const searchEl = document.getElementById('search');
+const favOnlyEl = document.getElementById('favOnly');
+
+let all = [], filtered = [], pool = [], activeUrl = null;
+let favourites = new Set();
+
+try { favourites = new Set(JSON.parse(localStorage.getItem('svwp.favs') || '[]')); } catch {}
+function saveFavs() {
+  try { localStorage.setItem('svwp.favs', JSON.stringify([...favourites])); } catch {}
+}
+
+function makeRow() {
+  const row = document.createElement('div');
+  row.className = 'row';
+  const img = document.createElement('img');
+  img.alt = '';
+  img.addEventListener('error', () => { img.style.visibility = 'hidden'; });
+  const meta = document.createElement('div');
+  meta.className = 'meta';
+  const name = document.createElement('div'); name.className = 'name';
+  const grp = document.createElement('div'); grp.className = 'grp';
+  meta.append(name, grp);
+  const fav = document.createElement('button');
+  fav.className = 'fav'; fav.type = 'button'; fav.textContent = '★'; fav.title = 'Toggle favourite';
+  row.append(img, meta, fav);
+  spacer.appendChild(row);
+
+  row.addEventListener('click', () => { const c = filtered[row._idx]; if (c) { activeUrl = c.url; render(); play(c); } });
+  fav.addEventListener('click', (ev) => {
+    ev.stopPropagation();
+    const c = filtered[row._idx]; if (!c) return;
+    if (favourites.has(c.url)) favourites.delete(c.url); else favourites.add(c.url);
+    saveFavs();
+    if (favOnlyEl.checked) applyFilter(); else render();
+  });
+  pool.push({ row, img, name, grp, fav });
+  return pool[pool.length - 1];
+}
+
+function render() {
+  const total = filtered.length;
+  spacer.style.height = (total * ROW_H) + 'px';
+  emptyMsg.style.display = total ? 'none' : '';
+
+  const start = Math.max(0, Math.floor(listEl.scrollTop / ROW_H) - OVERSCAN);
+  const visible = Math.ceil(listEl.clientHeight / ROW_H) + OVERSCAN * 2;
+  const end = Math.min(total, start + visible);
+
+  for (let k = 0; k < end - start; k++) {
+    const p = pool[k] || makeRow();
+    const idx = start + k;
+    const ch = filtered[idx];
+    p.row._idx = idx;
+    p.row.style.transform = `translateY(${idx * ROW_H}px)`;
+    p.row.style.display = '';
+    p.row.classList.toggle('active', ch.url === activeUrl);
+    p.name.textContent = ch.name;                    // textContent: playlist data is untrusted
+    p.grp.textContent = ch.group;
+    p.fav.classList.toggle('on', favourites.has(ch.url));
+    const logo = ch.logo && isSafeImageUrl(ch.logo) ? ch.logo : '';
+    if (p.img._src !== logo) {
+      p.img._src = logo;
+      p.img.style.visibility = logo ? 'visible' : 'hidden';
+      if (logo) p.img.src = logo; else p.img.removeAttribute('src');
+    }
+  }
+  for (let k = end - start; k < pool.length; k++) pool[k].row.style.display = 'none';
+}
+
+let rafPending = false;
+listEl.addEventListener('scroll', () => {
+  if (rafPending) return;
+  rafPending = true;
+  requestAnimationFrame(() => { rafPending = false; render(); });
+});
+window.addEventListener('resize', render);
+
+function applyFilter() {
+  const q = searchEl.value.trim().toLowerCase();
+  const g = groupSel.value;
+  const favOnly = favOnlyEl.checked;
+  filtered = all.filter((c) => {
+    if (favOnly && !favourites.has(c.url)) return false;
+    if (g && c.group !== g) return false;
+    if (q && !c.name.toLowerCase().includes(q) && !c.group.toLowerCase().includes(q)) return false;
+    return true;
+  });
+  countEl.textContent = `${filtered.length.toLocaleString()} of ${all.length.toLocaleString()} channels`;
+  listEl.scrollTop = 0;
+  render();
+}
+
+let searchTimer = 0;
+searchEl.addEventListener('input', () => { clearTimeout(searchTimer); searchTimer = setTimeout(applyFilter, 140); });
+groupSel.addEventListener('change', applyFilter);
+favOnlyEl.addEventListener('change', applyFilter);
+
+function setPlaylist(parsed, label) {
+  all = parsed.channels;
+  groupSel.replaceChildren();
+  const optAll = document.createElement('option');
+  optAll.value = ''; optAll.textContent = 'All groups';
+  groupSel.appendChild(optAll);
+  for (const g of parsed.groups) {
+    const o = document.createElement('option');
+    o.value = g; o.textContent = g;             // property assignment, never innerHTML
+    groupSel.appendChild(o);
+  }
+  applyFilter();
+  logHead('Playlist loaded');
+  log('ok', `${label}: ${all.length.toLocaleString()} channels across ${parsed.groups.length.toLocaleString()} groups.`);
+  if (parsed.uaHint) log('warn', 'Playlist contains #EXTVLCOPT/#EXTHTTP header directives. Browsers forbid setting User-Agent/Referer from JS — those channels cannot work here.');
+}
+
+/* ------------------------------------------------------------------ *
+ * Persistence (IndexedDB — playlists are far too big for localStorage)
+ * ------------------------------------------------------------------ */
+const DB = 'svwp', STORE = 'playlist';
+function idb() {
+  return new Promise((res, rej) => {
+    const req = indexedDB.open(DB, 1);
+    req.onupgradeneeded = () => req.result.createObjectStore(STORE);
+    req.onsuccess = () => res(req.result);
+    req.onerror = () => rej(req.error);
+  });
+}
+async function idbPut(value) {
+  const db = await idb();
+  return new Promise((res, rej) => {
+    const tx = db.transaction(STORE, 'readwrite');
+    tx.objectStore(STORE).put(value, 'last');
+    tx.oncomplete = () => { db.close(); res(); };
+    tx.onerror = () => { db.close(); rej(tx.error); };
+  });
+}
+async function idbGet() {
+  const db = await idb();
+  return new Promise((res, rej) => {
+    const tx = db.transaction(STORE, 'readonly');
+    const r = tx.objectStore(STORE).get('last');
+    r.onsuccess = () => { db.close(); res(r.result || null); };
+    r.onerror = () => { db.close(); rej(r.error); };
+  });
+}
+async function idbClear() {
+  const db = await idb();
+  return new Promise((res) => {
+    const tx = db.transaction(STORE, 'readwrite');
+    tx.objectStore(STORE).delete('last');
+    tx.oncomplete = () => { db.close(); res(); };
+  });
+}
+
+async function persist(parsed, label) {
+  try {
+    await idbPut({ label, savedAt: Date.now(), channels: parsed.channels, groups: parsed.groups, uaHint: parsed.uaHint });
+  } catch (e) {
+    log('warn', 'Could not cache playlist locally: ' + e.message);
+  }
+}
+
+/* ------------------------------------------------------------------ *
+ * Input handling
+ * ------------------------------------------------------------------ */
+const fileInput = document.getElementById('fileInput');
+document.getElementById('pickBtn').addEventListener('click', () => fileInput.click());
+fileInput.addEventListener('change', () => { if (fileInput.files[0]) loadFile(fileInput.files[0]); });
+
+async function loadFile(file) {
+  log('info', `Reading ${file.name} (${(file.size / 1048576).toFixed(1)} MB)…`);
+  try {
+    const parsed = parseM3U(await file.text());
+    if (!parsed.channels.length) { log('err', 'No #EXTINF entries found — is this really an M3U playlist?'); return; }
+    setPlaylist(parsed, file.name);
+    persist(parsed, file.name);
+  } catch (e) {
+    log('err', 'Failed to read file: ' + e.message);
+  }
+}
+
+document.getElementById('urlBtn').addEventListener('click', loadFromUrl);
+document.getElementById('urlInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') loadFromUrl(); });
+
+async function loadFromUrl() {
+  const raw = document.getElementById('urlInput').value.trim();
+  if (!raw) return;
+  if (!isSafeStreamUrl(raw)) { log('err', 'Only http:// and https:// playlist URLs are allowed.'); return; }
+  logHead('Fetching playlist');
+  log('info', redactUrl(raw));
+  for (const [lv, msg] of preflightNotes(raw)) log(lv, msg);
+
+  // fetch() is blockable mixed content: an http playlist is refused outright on
+  // an https origin, with no auto-upgrade the way media elements get.
+  let target = raw;
+  const isHttp = (parseUrl(target, location.href) || {}).protocol === 'http:';
+  if (isHttp && (location.protocol === 'https:' || document.getElementById('httpsUpgrade').checked)) {
+    const upgraded = await firstReachableHttps(target, log);
+    if (upgraded) { target = upgraded; log('ok', 'Fetching the playlist over HTTPS instead.'); }
+  }
+
+  try {
+    const res = await fetch(target, { mode: 'cors', credentials: 'omit' });
+    if (!res.ok) { log('err', `Playlist request returned HTTP ${res.status}.`); return; }
+    const parsed = parseM3U(await res.text());
+    if (!parsed.channels.length) { log('err', 'Response contained no #EXTINF entries.'); return; }
+    setPlaylist(parsed, 'remote playlist');
+    persist(parsed, 'remote playlist');
+  } catch (e) {
+    log('err', 'Playlist fetch failed: ' + (e.name === 'TypeError' ? 'blocked before JS could read it.' : e.message));
+    for (const [lv, msg] of await probe(target)) log(lv, msg);
+  }
+}
+
+document.getElementById('diagBtn').addEventListener('click', () => { if (current) runDiagnosis(current); });
+
+document.getElementById('copyBtn').addEventListener('click', async () => {
+  try { await navigator.clipboard.writeText(logEl.innerText); log('ok', 'Log copied to clipboard (URLs are redacted).'); }
+  catch { log('warn', 'Clipboard unavailable — select the log text and copy manually.'); }
+});
+
+document.getElementById('clearBtn').addEventListener('click', async () => {
+  teardown(); current = null; activeUrl = null; diagBtn.disabled = true;
+  all = []; filtered = []; applyFilter();
+  groupSel.replaceChildren();
+  npName.textContent = 'Nothing playing'; npType.textContent = '—'; npEngine.textContent = '—'; npUrl.textContent = '—';
+  await idbClear();
+  log('ok', 'Playlist cleared.');
+});
+
+/* Drag & drop */
+const drop = document.getElementById('drop');
+let dragDepth = 0;
+window.addEventListener('dragenter', (e) => { e.preventDefault(); if (++dragDepth === 1) drop.classList.add('on'); });
+window.addEventListener('dragover', (e) => { e.preventDefault(); });
+window.addEventListener('dragleave', (e) => { e.preventDefault(); if (--dragDepth <= 0) { dragDepth = 0; drop.classList.remove('on'); } });
+window.addEventListener('drop', (e) => {
+  e.preventDefault(); dragDepth = 0; drop.classList.remove('on');
+  const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+  if (f) loadFile(f);
+});
+
+/* ------------------------------------------------------------------ *
+ * Boot
+ * ------------------------------------------------------------------ */
+(async function boot() {
+  logHead('StreamVault Web Player');
+  log('info', `Origin: ${location.origin} (${location.protocol})`);
+  log('info', `MSE: ${window.MediaSource ? 'yes' : 'no'}   Native HLS: ${NATIVE_HLS ? 'yes' : 'no'}`);
+  if (location.protocol === 'file:') {
+    log('warn', 'file:// mode — maximum compatibility with http:// providers, but Origin is "null" so CORS rejections are likely.');
+  }
+  if (location.protocol === 'https:') {
+    document.getElementById('httpsBanner').hidden = false;
+    document.getElementById('httpsUpgrade').checked = true;
+    log('warn', 'https:// origin — http:// streams are blocked as mixed content. Every stream will be probed for an HTTPS endpoint first; if the provider has none, download the player and open it from disk.');
+  }
+  document.getElementById('dismissBanner').addEventListener('click', () => {
+    document.getElementById('httpsBanner').hidden = true;
+  });
+  try {
+    const saved = await idbGet();
+    if (saved && saved.channels && saved.channels.length) {
+      setPlaylist(saved, saved.label + ' (cached)');
+    }
+  } catch { /* first run */ }
+  render();
+})();
+
+})();
+</script>
+</body>
+</html>

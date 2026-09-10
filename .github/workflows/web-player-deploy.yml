@@ -1,0 +1,69 @@
+name: Deploy web player
+
+# Publishes tools/web-player to Azure Static Web Apps (https://iptv.senturk.dev).
+# The player is a static single file, so there is no build step.
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - 'tools/web-player/**'
+      - '.github/workflows/web-player-deploy.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Publish to Azure Static Web Apps
+    runs-on: ubuntu-latest
+    environment:
+      name: web-player
+      url: https://iptv.senturk.dev
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify player is self-contained
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f tools/web-player/index.html
+          test -f tools/web-player/staticwebapp.config.json
+          # The player must not gain a build step or local module imports.
+          if grep -Eq '<script[^>]+src="(\./|/|[A-Za-z0-9_.-]+\.js)' tools/web-player/index.html; then
+            echo "::error::Player references a local script; it is no longer self-contained."
+            exit 1
+          fi
+
+      # Everything under app_location is served publicly, so a stray playlist
+      # would publish the provider subscription to the internet.
+      - name: Block playlists and provider credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          stray=$(find tools/web-player -type f \( -name '*.m3u' -o -name '*.m3u8' \) \
+            ! -name 'sample-playlist.m3u')
+          if [ -n "$stray" ]; then
+            echo "::error::Playlist files staged for public deploy:"; echo "$stray"
+            exit 1
+          fi
+          if grep -rIEln 'get\.php\?|player_api\.php|panel_api\.php|[?&](username|password)=[^&"[:space:]]+' tools/web-player; then
+            echo "::error::Provider credentials found in a file that would be published publicly."
+            exit 1
+          fi
+
+      - name: Deploy
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+          action: upload
+          app_location: tools/web-player
+          output_location: ''
+          skip_app_build: true
+          skip_api_build: true
