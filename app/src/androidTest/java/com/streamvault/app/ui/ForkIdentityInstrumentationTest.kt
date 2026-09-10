@@ -56,7 +56,7 @@ class ForkIdentityInstrumentationTest {
         assertThat(context.packageName).isEqualTo("com.onsenturk.streamvault.debug")
         assertThat(context.packageName).isEqualTo(BuildConfig.APPLICATION_ID)
         assertThat(context.packageManager.getApplicationLabel(context.applicationInfo).toString())
-            .isEqualTo("StreamVault by Onur Debug")
+            .isEqualTo("Clicker Debug")
         val provider = requireNotNull(
             context.packageManager.resolveContentProvider("${context.packageName}.fileprovider", 0)
         )
@@ -73,7 +73,7 @@ class ForkIdentityInstrumentationTest {
                 setLocale(Locale.forLanguageTag(language))
             }
             val localized = context.createConfigurationContext(configuration)
-            assertThat(localized.getString(R.string.app_name)).isEqualTo("StreamVault by Onur Debug")
+            assertThat(localized.getString(R.string.app_name)).isEqualTo("Clicker Debug")
             assertThat(localized.getString(R.string.fork_original_repository_url))
                 .isEqualTo("https://github.com/Davidona/StreamVault-IPTV")
             assertThat(localized.getString(R.string.settings_donate_url)).isEqualTo("https://ko-fi.com/davidona")
@@ -118,7 +118,7 @@ class ForkIdentityInstrumentationTest {
         captureScreenshot("fork-maintainer")
 
         listOf(
-            "https://github.com/onsenturk/StreamVault-IPTV",
+            "https://github.com/onsenturk/Clicker",
             "https://github.com/Davidona/StreamVault-IPTV",
             "https://ko-fi.com/davidona"
         ).forEach { url ->

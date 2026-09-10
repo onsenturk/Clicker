@@ -1,10 +1,10 @@
-# StreamVault by Onur
+# Clicker
 
 **Based on StreamVault**, originally developed by **David Nashash (Davidona)**.
 This is an independent, non-commercial fork maintained by **Onur (onsenturk)**,
 not an official release by or endorsement from the original developer.
 
-- Fork source: <https://github.com/onsenturk/StreamVault-IPTV>
+- Fork source: <https://github.com/onsenturk/Clicker>
 - Original project: <https://github.com/Davidona/StreamVault-IPTV>
 - Original developer's support page: <https://ko-fi.com/davidona>
 - Governing license: [StreamVault Source-Available License (Non-Commercial)](../LICENSE), retained unchanged.
@@ -19,9 +19,9 @@ not transfer ownership of the original source or permit removal of these notices
 
 | Variant | Installed package | Label |
 | --- | --- | --- |
-| Release | `com.onsenturk.streamvault` | StreamVault by Onur |
-| Debug | `com.onsenturk.streamvault.debug` | StreamVault by Onur Debug |
-| Beta | `com.onsenturk.streamvault.beta` | StreamVault by Onur |
+| Release | `com.onsenturk.streamvault` | Clicker |
+| Debug | `com.onsenturk.streamvault.debug` | Clicker Debug |
+| Beta | `com.onsenturk.streamvault.beta` | Clicker |
 
 The Kotlin namespace remains `com.streamvault.app`. It names source classes and is
 not the package used by Android to distinguish installed apps. Launcher components,
@@ -35,9 +35,10 @@ Release-page templates carry the same attribution and a source link for the buil
 
 ## Updates And Data
 
-Stable and beta feeds point to `onsenturk/StreamVault-IPTV`. The existing
-`StreamVault.apk` and `StreamVault-beta.apk` asset aliases are retained for the
-release workflows; filenames do not determine Android publisher identity.
+Stable and beta feeds point to `onsenturk/Clicker`. Releases publish both
+`Clicker.apk` and the legacy `StreamVault.apk` alias, plus the matching `-beta`
+pair, so installs predating the rename still resolve an exact asset match;
+filenames do not determine Android publisher identity.
 Downloaded updates still need a matching checksum, package, certificate, and
 acceptable version. Do not disable those checks to install an upstream build.
 

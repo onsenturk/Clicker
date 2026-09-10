@@ -1,30 +1,30 @@
-# StreamVault by Onur
+# Clicker
 
 **Based on StreamVault**, originally developed by **David Nashash (Davidona)**.
 This is an independent, non-commercial fork maintained by **Onur (onsenturk)**,
 not the original developer's official distribution.
 
-- Fork source and support: <https://github.com/onsenturk/StreamVault-IPTV>
+- Fork source and support: <https://github.com/onsenturk/Clicker>
 - Original project: <https://github.com/Davidona/StreamVault-IPTV>
 - Support the original developer: <https://ko-fi.com/davidona>
 - The original [non-commercial, share-alike license](LICENSE) continues to apply, including visible attribution, preserved links, and publicly available corresponding source when distributing changes.
 
 <p align="center">
-	<a href="https://github.com/onsenturk/StreamVault-IPTV/releases"><img src="https://img.shields.io/badge/Releases-StreamVault_by_Onur-2ea44f?style=for-the-badge&logo=android" alt="StreamVault by Onur releases" /></a>
+	<a href="https://github.com/onsenturk/Clicker/releases"><img src="https://img.shields.io/badge/Releases-Clicker-2ea44f?style=for-the-badge&logo=android" alt="Clicker releases" /></a>
 	<a href="https://discord.gg/eGPBMygcb"><img src="https://img.shields.io/badge/Discord-Upstream%20Community-5865F2?style=for-the-badge&logo=discord&logoColor=white" alt="Original StreamVault community" /></a>
 	<a href="docs/CHANGELOG.md"><img src="https://img.shields.io/badge/Changelog-View-2563eb?style=for-the-badge" alt="View changelog" /></a>
-	<a href="https://github.com/onsenturk/StreamVault-IPTV/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/onsenturk/StreamVault-IPTV/ci.yml?branch=master&style=for-the-badge&label=CI" alt="Fork GitHub Actions status" /></a>
+	<a href="https://github.com/onsenturk/Clicker/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/onsenturk/Clicker/ci.yml?branch=master&style=for-the-badge&label=CI" alt="Fork GitHub Actions status" /></a>
 	<a href="https://ko-fi.com/davidona"><img src="https://img.shields.io/badge/Support-Original_Developer-ff5f5f?style=for-the-badge&logo=kofi" alt="Support David Nashash on Ko-fi" /></a>
 	<a href="LICENSE"><img src="https://img.shields.io/badge/License-Non--Commercial-0284c7?style=for-the-badge" alt="StreamVault Source-Available License (Non-Commercial)" /></a>
 </p>
 
-StreamVault by Onur is a TV-first IPTV player for Android TV built with Kotlin, Jetpack Compose, Room, Hilt, and Media3.
+Clicker is a TV-first IPTV player for Android TV built with Kotlin, Jetpack Compose, Room, Hilt, and Media3.
 
 The fork uses `com.onsenturk.streamvault` (`.debug` and `.beta` for test channels), so it can coexist with the original app. Changing the application ID does not copy the original app's private data or confer Android publisher trust. Export a backup from the old app before moving data; retain it until the fork's restore is verified. See [fork identity and signing](docs/FORK_IDENTITY.md).
 
-It is designed for large playlists, remote-friendly browsing, fast provider switching, and a polished living-room playback experience. StreamVault supports `M3U` playlists, `Xtream Codes`, `Stalker Portal`, and `Jellyfin` providers, with dedicated flows for `Live TV`, `Movies`, and `Series`.
+It is designed for large playlists, remote-friendly browsing, fast provider switching, and a polished living-room playback experience. Clicker supports `M3U` playlists, `Xtream Codes`, `Stalker Portal`, and `Jellyfin` providers, with dedicated flows for `Live TV`, `Movies`, and `Series`.
 
-Built for Android TV first, StreamVault focuses on the things generic IPTV apps usually get wrong: D-pad navigation, quick channel movement, large-library organization, and a player that still feels good to use from the couch. Phone and tablet installs are also supported, but the primary UX target is TV.
+Built for Android TV first, Clicker focuses on the things generic IPTV apps usually get wrong: D-pad navigation, quick channel movement, large-library organization, and a player that still feels good to use from the couch. Phone and tablet installs are also supported, but the primary UX target is TV.
 
 ## Preview
 <p align="center">
@@ -171,7 +171,7 @@ Built for Android TV first, StreamVault focuses on the things generic IPTV apps 
 
 ## Download
 
-- [StreamVault by Onur releases](https://github.com/onsenturk/StreamVault-IPTV/releases): only use artifacts explicitly built for `com.onsenturk.streamvault` and the intended channel.
+- [Clicker releases](https://github.com/onsenturk/Clicker/releases): only use artifacts explicitly built for `com.onsenturk.streamvault` and the intended channel.
 - Both stable and beta update checks use the fork's GitHub Releases, not the original project's release feed. Updates must still pass checksum, package, and signing-certificate checks.
 - Release signing must be configured with the fork maintainer's own permanent key. A debug APK is a test build; an unsigned release APK cannot be installed. A new key or app name does not automatically remove Play Protect or device-policy warnings.
 - GitHub Actions still runs build and test validation on pushes and pull requests.
@@ -179,7 +179,7 @@ Built for Android TV first, StreamVault focuses on the things generic IPTV apps 
 
 ## Support
 
-Report fork-specific issues to [Onur's repository](https://github.com/onsenturk/StreamVault-IPTV/issues). The original developer's support link is retained as required by the license:
+Report fork-specific issues to [Onur's repository](https://github.com/onsenturk/Clicker/issues). The original developer's support link is retained as required by the license:
 
 - [Support David Nashash (Davidona) on Ko-fi](https://ko-fi.com/davidona)
 

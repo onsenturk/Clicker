@@ -15,9 +15,9 @@ class GitHubReleaseCheckerTest {
     @Test
     fun releaseFeedsTargetTheMaintainedFork() {
         assertThat(AppUpdateChannel.Stable.releaseApiUrl)
-            .isEqualTo("https://api.github.com/repos/onsenturk/StreamVault-IPTV/releases/latest")
+            .isEqualTo("https://api.github.com/repos/onsenturk/Clicker/releases/latest")
         assertThat(AppUpdateChannel.Beta.releaseApiUrl)
-            .isEqualTo("https://api.github.com/repos/onsenturk/StreamVault-IPTV/releases?per_page=20")
+            .isEqualTo("https://api.github.com/repos/onsenturk/Clicker/releases?per_page=20")
     }
 
     @Test
