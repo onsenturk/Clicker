@@ -130,9 +130,9 @@ internal class SyncManagerM3uImporter(
                     m3uParser.parseStreaming(
                         inputStream = input,
                         onHeader = { parsedHeader ->
-                            requireM3uFieldBounds(
-                                parsedHeader.tvgUrls + listOfNotNull(parsedHeader.userAgent)
-                            )
+                            if (!withinM3uFieldBounds(parsedHeader.tvgUrls + listOfNotNull(parsedHeader.userAgent))) {
+                                throw CatalogAdmissionExceeded("M3U header field length limit exceeded")
+                            }
                             val validEpgUrls = parsedHeader.tvgUrls.filter { UrlSecurityPolicy.validateOptionalEpgUrl(it) == null }
                             if (validEpgUrls.size != parsedHeader.tvgUrls.size) {
                                 warnings += "Ignored unsupported EPG URL from playlist header."
@@ -145,7 +145,7 @@ internal class SyncManagerM3uImporter(
                             throw CatalogAdmissionExceeded("M3U entry limit exceeded")
                         }
                         enforceInvalidEntryRatio()
-                        requireM3uFieldBounds(
+                        val withinFieldBounds = withinM3uFieldBounds(
                             listOf(
                                 entry.name,
                                 entry.groupTitle,
@@ -164,6 +164,13 @@ internal class SyncManagerM3uImporter(
                                 entry.genre
                             )
                         )
+                        if (!withinFieldBounds) {
+                            // Skip just this entry: the invalid-entry ratio still aborts playlists
+                            // that are malformed throughout.
+                            invalidEntryCount++
+                            enforceInvalidEntryRatio()
+                            return@parseStreaming
+                        }
                         if (parsedCount >= nextMilestone) {
                             progress(provider.id, onProgress, "Imported $parsedCount playlist entries...")
                             // D14 — emission M3U etape Imported : current = nombre d'entrees
@@ -512,11 +519,8 @@ internal class SyncManagerM3uImporter(
         return value.orEmpty().lowercase().replace(Regex("\\s+"), " ").trim()
     }
 
-    private fun requireM3uFieldBounds(fields: Iterable<String?>) {
-        if (fields.any { it != null && it.length > sizeLimits.maxM3uFieldLength }) {
-            throw CatalogAdmissionExceeded("M3U field length limit exceeded")
-        }
-    }
+    private fun withinM3uFieldBounds(fields: Iterable<String?>): Boolean =
+        fields.none { it != null && it.length > sizeLimits.maxM3uFieldLength }
 
     private class BoundedInputStream(
         input: InputStream,

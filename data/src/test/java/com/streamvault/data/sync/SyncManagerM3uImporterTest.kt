@@ -103,12 +103,14 @@ class SyncManagerM3uImporterTest {
     }
 
     @Test
-    fun `persisted metadata fields are subject to the field limit`() = runTest {
+    fun `entry exceeding the field limit is skipped without failing the playlist`() = runTest {
         val overlongTvgId = "t".repeat(65)
         val playlist = """
             #EXTM3U
-            #EXTINF:-1 tvg-id="$overlongTvgId" group-title="News",News
-            https://stream.example.com/news.ts
+            #EXTINF:-1 tvg-id="$overlongTvgId" group-title="News",Broken
+            https://stream.example.com/broken.ts
+            #EXTINF:-1 tvg-id="ok" group-title="News",Working
+            https://stream.example.com/working.ts
         """.trimIndent().toByteArray()
         val fixture = fixture(
             body = playlist,
@@ -118,14 +120,40 @@ class SyncManagerM3uImporterTest {
                 maxM3uFieldLength = 64
             )
         )
+        var stagedChannels = emptyList<com.streamvault.data.local.entity.ChannelEntity>()
+        doAnswer { invocation ->
+            @Suppress("UNCHECKED_CAST")
+            stagedChannels = (invocation.arguments[2] as List<com.streamvault.data.local.entity.ChannelEntity>).toList()
+            Unit
+        }.whenever(fixture.store).stageChannelBatch(any(), any(), any())
 
-        val failure = runCatching {
-            fixture.importer.importPlaylist(provider(), onProgress = null)
-        }.exceptionOrNull()
+        val stats = fixture.importer.importPlaylist(provider(), onProgress = null)
 
-        assertThat(failure).isInstanceOf(CatalogAdmissionExceeded::class.java)
-        assertThat(failure).hasMessageThat().contains("field length limit")
-        assertThat(fixture.finalized).isFalse()
+        assertThat(stats.liveCount).isEqualTo(1)
+        assertThat(stagedChannels.single().name).isEqualTo("Working")
+    }
+
+    @Test
+    fun `inline base64 artwork is dropped instead of aborting the import`() = runTest {
+        val inlineLogo = "data:image/jpeg;base64," + "A".repeat(16_000)
+        val playlist = """
+            #EXTM3U
+            #EXTINF:-1 tvg-id="feature" tvg-logo="$inlineLogo" group-title="VOD",Feature
+            https://stream.example.com/feature.ts
+        """.trimIndent().toByteArray()
+        val fixture = fixture(body = playlist, limits = CatalogSizeLimits())
+        var stagedChannels = emptyList<com.streamvault.data.local.entity.ChannelEntity>()
+        doAnswer { invocation ->
+            @Suppress("UNCHECKED_CAST")
+            stagedChannels = (invocation.arguments[2] as List<com.streamvault.data.local.entity.ChannelEntity>).toList()
+            Unit
+        }.whenever(fixture.store).stageChannelBatch(any(), any(), any())
+
+        val stats = fixture.importer.importPlaylist(provider(), onProgress = null)
+
+        assertThat(stats.liveCount).isEqualTo(1)
+        assertThat(stagedChannels.single().name).isEqualTo("Feature")
+        assertThat(stagedChannels.single().logoUrl).isNull()
     }
 
     @Test

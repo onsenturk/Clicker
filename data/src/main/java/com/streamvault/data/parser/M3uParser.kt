@@ -505,7 +505,9 @@ class M3uParser {
                 content.substring(valueStart, end).trim()
             }
 
-            if (key.isNotBlank()) {
+            // Oversized values are cosmetic metadata (typically inline base64 tvg-logo art).
+            // Dropping them here keeps the surrounding entry importable.
+            if (key.isNotBlank() && value.length <= MAX_ATTRIBUTE_VALUE_CHARS) {
                 attributes[key] = value
             }
         }
@@ -536,6 +538,7 @@ class M3uParser {
             "url-xml"
         )
         private const val MAX_HEADER_EPG_URLS = 8
+        private const val MAX_ATTRIBUTE_VALUE_CHARS = 8_192
         private val WINDOWS_1252: Charset = Charset.forName("windows-1252")
 
         private val vodClassifier = M3uVodClassifier()

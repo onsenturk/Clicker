@@ -5,7 +5,9 @@ data class CatalogSizeLimits(
     val maxMoviesPerProvider: Int = 200_000,
     val maxSeriesPerProvider: Int = 100_000,
     val maxM3uDecompressedBytes: Long = 100L * 1024L * 1024L,
-    val maxM3uLineBytes: Int = 16 * 1024,
+    // Providers routinely inline base64 artwork in a single #EXTINF line, so this bound only
+    // has to stop unbounded line buffering, not reject ordinary playlists.
+    val maxM3uLineBytes: Int = 64 * 1024,
     val maxM3uEntries: Int = 300_000,
     val maxM3uCategoriesPerType: Int = 10_000,
     val maxM3uFieldLength: Int = 8_192,
